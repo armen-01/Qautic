@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout, QSlider, QListWidgetItem, QPushButton, QSizePolicy
+from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout, QSlider, QListWidgetItem, QPushButton, QSizePolicy, QLineEdit
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QFontDatabase
 import os
@@ -11,9 +11,8 @@ class SettingsTileWidget(QWidget):
         self.symbol_off = symbol_off
         self.options = options
         self.options_count = options_count
-        self.current_index = 0
+        self.tile_value = 0
         self.is_unchanged = True  # True = unchanged, False = normal/cycling
-        self.slider_is_unchanged = True  # For slider type
         self.ttip = tooltip
         self._setup_fonts()
         self._init_ui()
@@ -40,7 +39,7 @@ class SettingsTileWidget(QWidget):
         self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.set_icon_color()
         layout.addWidget(self.icon_label)
-        # Value widget
+        # Incremental type
         if self.type_ == 0:
             initial_text = "-" if self.is_unchanged else (self.options[0] if self.options else "")
             self.value_button = QPushButton(initial_text, self)
@@ -53,9 +52,11 @@ class SettingsTileWidget(QWidget):
             self.set_button_color()
             self.value_button.clicked.connect(self.cycle_option)
             layout.addWidget(self.value_button, alignment=Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter)
+        # Slider type
         elif self.type_ == 1:
             layout.setSpacing(10)
             self.slider = QSlider(Qt.Orientation.Horizontal, self)
+            self.slider.valueChanged.connect(self._slider_value_changed)
             self.slider.setRange(0, 100)
             self.slider.setValue(0)
             self.slider.setStyleSheet('''
@@ -89,16 +90,44 @@ class SettingsTileWidget(QWidget):
             ''')
             layout.addWidget(self.slider)
             self.slider.sliderPressed.connect(self.enable_slider)
+        # Text field type (type_ == 2)
+        elif self.type_ == 2:
+            self.text_field = QLineEdit("0", self)
+            text_font = QFont(self.text_font_family)
+            text_font.setPointSize(12)
+            self.text_field.setFont(text_font)
+            self._set_text_field_style(enabled=not self.is_unchanged)
+            self.text_field.setAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
+            self.text_field.textChanged.connect(self._on_text_field_changed)
+            layout.addWidget(self.text_field, alignment=Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter)
         self.setLayout(layout)
+
+    def _set_text_field_style(self, enabled=True):
+        color = "#eee" if enabled else "#666"
+        self.text_field.setStyleSheet(f'''
+            background: #363636;
+            border: 1px solid #4a4a4a;
+            color: {color};
+            border-radius: 10px;
+            padding: 6px 10px;
+        ''')
+
+    def _on_text_field_changed(self, value):
+        self.tile_value = value
+        if self.is_unchanged:
+            self.is_unchanged = False
+            self.set_icon_color()
+            self._set_text_field_style(enabled=True)
+
+    def _slider_value_changed(self, value):
+        self.tile_value = value
+        self.slider.setToolTip(f"{value}%")
 
     def set_icon_color(self):
         # Set icon color based on current_index and options_count
         if self.type_ == 0 and self.options_count == 2:
             color = self._get_toggle_color()
-        elif self.type_ == 0 and self.is_unchanged:
-            self.icon_label.setText(self.symbol_off)
-            color = "#666"
-        elif self.type_ == 1 and self.slider_is_unchanged:
+        elif (self.type_ == 0 and self.is_unchanged) or (self.type_ == 1 and self.is_unchanged) or (self.type_ == 2 and self.is_unchanged):
             self.icon_label.setText(self.symbol_off)
             color = "#666"
         else:
@@ -132,21 +161,21 @@ class SettingsTileWidget(QWidget):
         if self.is_unchanged:
             self.icon_label.setText(self.symbol_off)
             return "#666"
-        elif self.current_index == 0:
+        elif self.tile_value == 0:
             self.icon_label.setText(self.symbol_on)
             return "#eee"
         else:
             return "#666"
 
     def enable_slider(self):
-        if self.slider_is_unchanged:
-            self.slider_is_unchanged = False
+        if self.is_unchanged:
+            self.is_unchanged = False
             self.set_icon_color()
 
     def cycle_option(self):
         if self.type_ == 0 and self.options_count > 0 and not self.is_unchanged:
-            self.current_index = (self.current_index + 1) % self.options_count
-            self.value_button.setText(str(self.options[self.current_index]))
+            self.tile_value = (self.tile_value + 1) % self.options_count
+            self.value_button.setText(str(self.options[self.tile_value]))
             self.set_button_color()
             self.set_icon_color()
             self.value_button.repaint()
@@ -164,8 +193,8 @@ class SettingsTileWidget(QWidget):
             elif event.button() == Qt.MouseButton.LeftButton:
                 if self.is_unchanged:
                     self.is_unchanged = False
-                    self.current_index = 0
-                    self.value_button.setText(str(self.options[self.current_index]))
+                    self.tile_value = 0
+                    self.value_button.setText(str(self.options[self.tile_value]))
                     self.set_button_color()
                     self.set_icon_color()
                     self.value_button.repaint()
@@ -176,8 +205,24 @@ class SettingsTileWidget(QWidget):
                 super().mousePressEvent(event)
         elif self.type_ == 1:
             if event.button() == Qt.MouseButton.RightButton:
-                self.slider_is_unchanged = True
+                self.is_unchanged = True
                 self.set_icon_color()
+            else:
+                super().mousePressEvent(event)
+        elif self.type_ == 2:
+            if event.button() == Qt.MouseButton.RightButton:
+                self.is_unchanged = True
+                self.set_icon_color()
+                self._set_text_field_style(enabled=False)
+                self.text_field.repaint()
+                self.repaint()
+            elif event.button() == Qt.MouseButton.LeftButton:
+                if self.is_unchanged:
+                    self.is_unchanged = False
+                    self.set_icon_color()
+                    self._set_text_field_style(enabled=True)
+                    self.text_field.repaint()
+                    self.repaint()
             else:
                 super().mousePressEvent(event)
         else:

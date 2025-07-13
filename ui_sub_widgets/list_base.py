@@ -1,6 +1,6 @@
-from PyQt6.QtWidgets import QWidget, QListWidget, QVBoxLayout, QLabel, QSpacerItem, QSizePolicy, QListWidgetItem, QApplication, QStyle
+from PyQt6.QtWidgets import QWidget, QListWidget, QVBoxLayout, QLabel, QHBoxLayout, QPushButton
 from PyQt6.QtCore import Qt, QSize
-from PyQt6.QtGui import QFont, QFontDatabase, QIcon
+from PyQt6.QtGui import QFont, QFontDatabase
 import os
 
 class SnapListWidget(QListWidget):
@@ -51,16 +51,59 @@ class ListBase(QWidget):
         self.header_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.header_label.setStyleSheet(f"""
             #base_list_header {{
-            background-color: {color_bg};
-            border-left: 1px solid {color_border};
-            border-top: 1px solid {color_border};
-            color: {color_font};
-            border-top-left-radius: 10px;
-            border-bottom: 1px solid;
-            border-bottom-color: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                stop:.05 {color_bg}, stop:0.5 {color_font}, stop:.95 {color_bg});
+                background: none;
+                border: none;
+                color: {color_font};
             }}
         """)
+
+        # Static Header Label + Optional Button
+        header_layout = QHBoxLayout()
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setSpacing(0)
+        # Use a container widget for header background
+        from PyQt6.QtWidgets import QWidget
+        header_container = QWidget(self)
+        header_container.setObjectName("header_container")
+        header_container.setStyleSheet(f"""
+            QWidget#header_container {{
+                background-color: {color_bg};
+                border-left: 1px solid {color_border};
+                border-top: 1px solid {color_border};
+                color: {color_font};
+                border-top-left-radius: 10px;
+                border-bottom: 1px solid;
+                border-bottom-color: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:.05 {color_bg}, stop:0.5 {color_font}, stop:.95 {color_bg});
+            }}
+        """)
+        header_inner_layout = QHBoxLayout(header_container)
+        header_inner_layout.setContentsMargins(0, 0, 0, 0)
+        header_inner_layout.setSpacing(0)
+        if label == "Auto Settings":
+            self.autosettings_spacing = 28 # Save button size
+            from PyQt6.QtWidgets import QSpacerItem, QSizePolicy
+            spacer = QSpacerItem(self.autosettings_spacing, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
+            header_inner_layout.addItem(spacer)
+        header_inner_layout.addStretch(1)
+        header_inner_layout.addWidget(self.header_label, stretch=0)
+        if label == "Auto Settings":
+            font_path_icon = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'assets', 'fonts', 'MaterialSymbolsRounded-VariableFont_FILL,GRAD,opsz,wght.ttf')
+            font_id_icon = QFontDatabase.addApplicationFont(font_path_icon)
+            font_families_icon = QFontDatabase.applicationFontFamilies(font_id_icon)
+            icon_font = QFont(font_families_icon[0])
+            icon_font.setPointSize(self.autosettings_spacing//2)
+            btn = QPushButton("\uE161", self)
+            btn.setFont(icon_font)
+            btn.setStyleSheet("QPushButton { background: transparent; border: none; color: #666; padding: 0 8px; } QPushButton:pressed { background: transparent; }")
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setFixedHeight(self.header_label.sizeHint().height())
+            header_inner_layout.addStretch(1)
+            header_inner_layout.addWidget(btn, stretch=0)
+        else:
+            header_inner_layout.addStretch(1)
+        header_layout.addWidget(header_container)
+        layout.addLayout(header_layout)
 
         # List Widget
         self.list_widget = SnapListWidget(self)
@@ -108,6 +151,7 @@ class ListBase(QWidget):
             padding-left: 5px;
             padding-right: 5px;
             border-radius: 15px;
+            background-color: {color_bg};
             border: 1px solid {color_border};
             color: {color_font};
             min-width: {self.sz}px;
@@ -153,7 +197,7 @@ class ListBase(QWidget):
         #self.list_widget.setIconSize(QSize(icon_sz, icon_sz))
         item_font = QFont(font_families[5])
         self.list_widget.setFont(item_font)
-        layout.addWidget(self.header_label)
+        
         layout.addWidget(self.list_widget)
 
         self.setLayout(layout)
