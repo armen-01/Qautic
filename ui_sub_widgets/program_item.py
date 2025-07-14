@@ -3,7 +3,7 @@ from PyQt6.QtGui import QIcon, QAction
 from PyQt6.QtCore import Qt
 
 class ProgramItem(QListWidgetItem):
-    def __init__(self, name: str, path: str, priority: int, icon: QIcon = None, parent_list=None):
+    def __init__(self, name: str, path: str, priority: int, icon: QIcon = None, settings=None, parent_list=None):
         super().__init__(name)
         self.name = name
         self.path = path
@@ -11,6 +11,7 @@ class ProgramItem(QListWidgetItem):
         self.is_enabled = True
         self._original_icon = icon
         self.setToolTip(name)
+        self.settings = settings or {}  # Dict of {setting_key: {tile_value, is_unchanged}}
         self.parent_list = parent_list  # Reference to the parent QListWidget
         if icon:
             self.setIcon(icon)

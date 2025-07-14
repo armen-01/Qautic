@@ -4,7 +4,7 @@ from PyQt6.QtGui import QFont, QFontDatabase
 import os
 
 class SettingsTileWidget(QWidget):
-    def __init__(self, type_: int, symbol_on: str, symbol_off: str, options: list[str], options_count: int, tooltip: str, parent=None):
+    def __init__(self, type_: int, symbol_on: str, symbol_off: str, options: list[str], options_count: int, tooltip: str, key: str, parent=None):
         super().__init__(parent)
         self.type_ = type_
         self.symbol_on = symbol_on
@@ -13,6 +13,7 @@ class SettingsTileWidget(QWidget):
         self.options_count = options_count
         self.tile_value = 0
         self.is_unchanged = True  # True = unchanged, False = normal/cycling
+        self.key = key  # Unique key for this setting
         self.ttip = tooltip
         self._setup_fonts()
         self._init_ui()
@@ -127,13 +128,26 @@ class SettingsTileWidget(QWidget):
         # Set icon color based on current_index and options_count
         if self.type_ == 0 and self.options_count == 2:
             color = self._get_toggle_color()
-        elif (self.type_ == 0 and self.is_unchanged) or (self.type_ == 1 and self.is_unchanged) or (self.type_ == 2 and self.is_unchanged):
-            self.icon_label.setText(self.symbol_off)
-            color = "#666"
+            self.icon_label.setStyleSheet(f"color: {color};")
+        elif self.type_ == 0 or self.type_ == 1:
+            if self.is_unchanged:
+                self.icon_label.setText(self.symbol_off)
+                color = "#666"
+            else:
+                self.icon_label.setText(self.symbol_on)
+                color = "#eee"
+            self.icon_label.setStyleSheet(f"color: {color};")
+        elif self.type_ == 2:
+            # For type 2, always update icon and color to match is_unchanged
+            if self.is_unchanged:
+                self.icon_label.setText(self.symbol_off)
+                self.icon_label.setStyleSheet("color: #666;")
+            else:
+                self.icon_label.setText(self.symbol_on)
+                self.icon_label.setStyleSheet("color: #eee;")
+            self.icon_label.repaint()
         else:
-            color = "#eee"
-            self.icon_label.setText(self.symbol_on)
-        self.icon_label.setStyleSheet(f"color: {color};")
+            self.icon_label.setStyleSheet("color: #eee;")
 
     def set_button_color(self):
         # Set button color based on current_index and options_count
@@ -228,8 +242,40 @@ class SettingsTileWidget(QWidget):
         else:
             super().mousePressEvent(event)
 
+    def get_state(self):
+        return {"tile_value": self.tile_value, "is_unchanged": self.is_unchanged}
+
+    def set_state(self, tile_value, is_unchanged):
+        self.tile_value = tile_value
+        self.is_unchanged = is_unchanged
+        if self.type_ == 0:
+            if is_unchanged:
+                self.value_button.setText("-")
+            else:
+                self.value_button.setText(str(self.options[self.tile_value]))
+            self.set_button_color()
+            self.set_icon_color()
+            self.value_button.repaint()
+            self.repaint()
+        elif self.type_ == 1:
+            self.slider.setValue(self.tile_value)
+            self.set_icon_color()
+        elif self.type_ == 2:
+            # Block signals to avoid triggering _on_text_field_changed
+            self.text_field.blockSignals(True)
+            self.text_field.setText(str(self.tile_value))
+            self.text_field.blockSignals(False)
+            self._set_text_field_style(enabled=not is_unchanged)
+            self.set_icon_color()
+            self.text_field.repaint()
+            self.repaint()
+
 class SettingsTile(QListWidgetItem):
-    def __init__(self, type_: int, symbol_on: str, symbol_off: str, options: list[str], options_count: int, tooltip: str, parent_list):
+    def __init__(self, type_: int, symbol_on: str, symbol_off: str, options: list[str], options_count: int, tooltip: str, key: str, parent_list=None):
         super().__init__(parent_list)
-        self.widget = SettingsTileWidget(type_, symbol_on, symbol_off, options, options_count, tooltip)
+        self.widget = SettingsTileWidget(type_, symbol_on, symbol_off, options, options_count, tooltip, key)
         parent_list.setItemWidget(self, self.widget)
+    def get_state(self):
+        return self.widget.get_state()
+    def set_state(self, tile_value, is_unchanged):
+        self.widget.set_state(tile_value, is_unchanged)

@@ -21,22 +21,29 @@ class FloatingWidgetMenuMain(StyledSplitter):
         self._load_programs()
         self._add_plus_button()
         # Settings
+        self.settings_tiles = {}
         settings_area = ListBase(self, parent.main_radius - (parent.splitter_height*2.4), label="Auto Settings", sz=92)
-        tile_wifi = SettingsTile(0, "\uE1D8", "\uE1DA", ["On", "Off"], 2, "WiFi", settings_area.list_widget)
-        tile_bt = SettingsTile(0, "\uE1A7", "\uE1A9", ["On", "Off"], 2, "Bluetooth", settings_area.list_widget)
-        tile_brightness = SettingsTile(1, "\uE1AC", "\uE1AD", [], 0, "Brightness", settings_area.list_widget)
-        tile_volume = SettingsTile(1, "\uE050", "\uE04F", [], 0, "Volume", settings_area.list_widget)
-        tile_performance = SettingsTile(0, "\uE322", "\uE4FF",  ["High", "Medium", "Low"], 3, "Performance Mode", settings_area.list_widget)
-        tile_nightlight = SettingsTile(0, "\uF34F", "\uEB76", ["On", "Off"], 2, "Night Light", settings_area.list_widget)
-        tile_airplane = SettingsTile(0, "\uE195", "\uE194", ["On", "Off"], 2, "Airplane Mode", settings_area.list_widget)
-        tile_notifications = SettingsTile(0, "\uE7F7", "\uE7F6", ["On", "Off"], 2, "Notifications", settings_area.list_widget)
-        tile_hotspot = SettingsTile(0, "\uE1E2", "\uE0CE", ["On", "Off"], 2, "Hotspot", settings_area.list_widget)
-        tile_systemcolor = SettingsTile(0, "\uEB37", "\uEC72", ["Light", "Dark"], 2, "System Color", settings_area.list_widget)
-        tile_mic = SettingsTile(0, "\uE029", "\uE02B", ["On", "Off"], 2, "Microphone", settings_area.list_widget)
-        tile_priority = SettingsTile(2, "\uE7FD", "\uE510", [], 0, "Priority", settings_area.list_widget)
+        self.settings_tiles["wifi"] = SettingsTile(0, "\uE1D8", "\uE1DA", ["On", "Off"], 2, "WiFi", "wifi", settings_area.list_widget)
+        self.settings_tiles["bt"] = SettingsTile(0, "\uE1A7", "\uE1A9", ["On", "Off"], 2, "Bluetooth", "bt", settings_area.list_widget)
+        self.settings_tiles["brightness"] = SettingsTile(1, "\uE1AC", "\uE1AD", [], 0, "Brightness", "brightness", settings_area.list_widget)
+        self.settings_tiles["volume"] = SettingsTile(1, "\uE050", "\uE04F", [], 0, "Volume", "volume", settings_area.list_widget)
+        self.settings_tiles["performance"] = SettingsTile(0, "\uE322", "\uE4FF",  ["High", "Medium", "Low"], 3, "Performance Mode", "performance", settings_area.list_widget)
+        self.settings_tiles["nightlight"] = SettingsTile(0, "\uF34F", "\uEB76", ["On", "Off"], 2, "Night Light", "nightlight", settings_area.list_widget)
+        self.settings_tiles["airplane"] = SettingsTile(0, "\uE195", "\uE194", ["On", "Off"], 2, "Airplane Mode", "airplane", settings_area.list_widget)
+        self.settings_tiles["notifications"] = SettingsTile(0, "\uE7F7", "\uE7F6", ["On", "Off"], 2, "Notifications", "notifications", settings_area.list_widget)
+        self.settings_tiles["hotspot"] = SettingsTile(0, "\uE1E2", "\uE0CE", ["On", "Off"], 2, "Hotspot", "hotspot", settings_area.list_widget)
+        self.settings_tiles["systemcolor"] = SettingsTile(0, "\uEB37", "\uEC72", ["Light", "Dark"], 2, "System Color", "systemcolor", settings_area.list_widget)
+        self.settings_tiles["mic"] = SettingsTile(0, "\uE029", "\uE02B", ["On", "Off"], 2, "Microphone", "mic", settings_area.list_widget)
+        self.settings_tiles["priority"] = SettingsTile(2, "\uE7FD", "\uE510", [], 0, "Priority", "priority", settings_area.list_widget)
         
         self.addWidget(self.programs_area)
         self.addWidget(settings_area)
+        
+        self.selected_program = None
+        self.programs_area.list_widget.currentItemChanged.connect(self._on_program_selected)
+
+        if hasattr(settings_area, 'btn'):
+            settings_area.btn.clicked.connect(self._on_save_settings)
 
     def _add_plus_button(self):
         plus_item = QListWidgetItem()
@@ -70,15 +77,19 @@ class FloatingWidgetMenuMain(StyledSplitter):
                     return
             icon_provider = QFileIconProvider()
             icon = icon_provider.icon(QFileInfo(exe_path))
+            # When adding a new program, initialize settings
+            default_settings = {k: {"tile_value": 0, "is_unchanged": True} for k in self.settings_tiles.keys()}
             prog_item = ProgramItem(
                 name=exe_name,
                 path=exe_path,
                 priority=-1,
                 icon=icon,
-                parent_list=self.programs_area.list_widget
+                settings=default_settings
             )
             # Insert before the plus button
             lw.insertItem(lw.count()-1, prog_item)
+            self.selected_program = prog_item
+            self._on_program_selected(prog_item, None)
             self._save_programs()
 
     def _load_programs(self):
@@ -96,6 +107,7 @@ class FloatingWidgetMenuMain(StyledSplitter):
                     path=entry['path'],
                     priority=entry.get('priority', -1),
                     icon=icon,
+                    settings=entry.get('settings', {}),
                     parent_list=self.programs_area.list_widget
                 )
                 self.programs_area.add_item(prog_item)
@@ -112,7 +124,27 @@ class FloatingWidgetMenuMain(StyledSplitter):
                 programs.append({
                     'name': item.name,
                     'path': item.path,
-                    'priority': item.priority
+                    'priority': item.priority,
+                    'settings': getattr(item, 'settings', {})
                 })
         with open(self.programs_json_path, 'w', encoding='utf-8') as f:
             json.dump(programs, f, indent=2)
+
+    def _on_program_selected(self, current, previous):
+        if current is None or not hasattr(current, 'settings'):
+            # No program selected, zero/unchange all tiles
+            for tile in self.settings_tiles.values():
+                tile.set_state(0, True)
+            self.selected_program = None
+            return
+        self.selected_program = current
+        for key, tile in self.settings_tiles.items():
+            state = current.settings.get(key, {"tile_value": 0, "is_unchanged": True})
+            tile.set_state(state["tile_value"], state["is_unchanged"])
+
+    def _on_save_settings(self):
+        if not self.selected_program:
+            return
+        for key, tile in self.settings_tiles.items():
+            self.selected_program.settings[key] = tile.get_state()
+        self._save_programs()
