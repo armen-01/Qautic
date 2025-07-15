@@ -1,6 +1,7 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QSplitter, QSplitterHandle
 from PyQt6.QtGui import QPainter, QColor
+from ui_colors import SPLITTER
 
 class StyledSplitter(QSplitter):
     def createHandle(self):
@@ -18,7 +19,7 @@ class StyledSplitterHandle(QSplitterHandle):
         width = 40
         x = (rect.width() - width) // 2
         y = rect.height() // 2
-        painter.setPen(QColor("#3e3e3e"))
+        painter.setPen(QColor(SPLITTER))
         painter.setBrush(Qt.BrushStyle.NoBrush)
         pen = painter.pen()
         pen.setWidth(2)

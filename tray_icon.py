@@ -46,6 +46,7 @@ class TrayIcon(QSystemTrayIcon):
         menu = QMenu()
         show_action = QAction('Show', self)
         hide_action = QAction('Hide', self)
+        toggle_service = QAction('Disable', self)
         slider_action = QAction('Adjust Value...', self)
         quit_action = QAction('Quit', self)
         menu.addAction(show_action)

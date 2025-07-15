@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout, QSlider, QListWidgetIt
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QFontDatabase
 import os
+import ui_colors
 
 class SettingsTileWidget(QWidget):
     def __init__(self, type_: int, symbol_on: str, symbol_off: str, options: list[str], options_count: int, tooltip: str, key: str, parent=None):
@@ -60,34 +61,34 @@ class SettingsTileWidget(QWidget):
             self.slider.valueChanged.connect(self._slider_value_changed)
             self.slider.setRange(0, 100)
             self.slider.setValue(0)
-            self.slider.setStyleSheet('''
-                QSlider {
+            self.slider.setStyleSheet(f'''
+                QSlider {{
                     min-height: 18px;
                     max-height: 18px;
                     padding-bottom: 10px;
                     padding-left: 10px;
                     padding-right: 10px;
-                }
-                QSlider::groove:horizontal {
+                }}
+                QSlider::groove:horizontal {{
                     border: none;
                     height: 18px;
                     border-radius: 0px;
-                    background: #4a4a4a;
-                }
-                QSlider::sub-page:horizontal {
-                    background: #777;
+                    background: {ui_colors.ELEMENT_LIGHT};
+                }}
+                QSlider::sub-page:horizontal {{
+                    background: {ui_colors.SLIDER_FILLED};
                     border-radius: 0px;
-                }
-                QSlider::add-page:horizontal {
-                    background: #4a4a4a;
+                }}
+                QSlider::add-page:horizontal {{
+                    background: {ui_colors.ELEMENT_LIGHT};
                     border-radius: 9px;
-                }
-                QSlider::handle:horizontal {
-                    background: #ccc;
+                }}
+                QSlider::handle:horizontal {{
+                    background: {ui_colors.SLIDER_BAR};
                     border: none;
                     width: 10px;
                     margin: 0;
-                }
+                }}
             ''')
             layout.addWidget(self.slider)
             self.slider.sliderPressed.connect(self.enable_slider)
@@ -104,10 +105,10 @@ class SettingsTileWidget(QWidget):
         self.setLayout(layout)
 
     def _set_text_field_style(self, enabled=True):
-        color = "#eee" if enabled else "#666"
+        color = ui_colors.FONT if enabled else ui_colors.FONT_INACTIVE
         self.text_field.setStyleSheet(f'''
-            background: #363636;
-            border: 1px solid #4a4a4a;
+            background: {ui_colors.MAIN_BG};
+            border: 1px solid {ui_colors.ELEMENT_LIGHT};
             color: {color};
             border-radius: 10px;
             padding: 6px 10px;
@@ -132,31 +133,31 @@ class SettingsTileWidget(QWidget):
         elif self.type_ == 0 or self.type_ == 1:
             if self.is_unchanged:
                 self.icon_label.setText(self.symbol_off)
-                color = "#666"
+                color = ui_colors.FONT_INACTIVE
             else:
                 self.icon_label.setText(self.symbol_on)
-                color = "#eee"
+                color = ui_colors.FONT
             self.icon_label.setStyleSheet(f"color: {color};")
         elif self.type_ == 2:
             # For type 2, always update icon and color to match is_unchanged
             if self.is_unchanged:
                 self.icon_label.setText(self.symbol_off)
-                self.icon_label.setStyleSheet("color: #666;")
+                self.icon_label.setStyleSheet(f"color: {ui_colors.FONT_INACTIVE};")
             else:
                 self.icon_label.setText(self.symbol_on)
-                self.icon_label.setStyleSheet("color: #eee;")
+                self.icon_label.setStyleSheet(f"color: {ui_colors.FONT};")
             self.icon_label.repaint()
         else:
-            self.icon_label.setStyleSheet("color: #eee;")
+            self.icon_label.setStyleSheet(f"color: {ui_colors.FONT};")
 
     def set_button_color(self):
         # Set button color based on current_index and options_count
         if self.type_ == 0 and self.options_count == 2:
             color = self._get_toggle_color()
         elif self.type_ == 0 and self.is_unchanged:
-            color = "#666"
+            color = ui_colors.FONT_INACTIVE
         else:
-            color = "#eee"
+            color = ui_colors.FONT
         self.value_button.setStyleSheet(f'''
             QPushButton {{
                 background: transparent;
@@ -174,12 +175,12 @@ class SettingsTileWidget(QWidget):
         # Helper for 2-option toggle color
         if self.is_unchanged:
             self.icon_label.setText(self.symbol_off)
-            return "#666"
+            return ui_colors.FONT_INACTIVE
         elif self.tile_value == 0:
             self.icon_label.setText(self.symbol_on)
-            return "#eee"
+            return ui_colors.FONT
         else:
-            return "#666"
+            return ui_colors.FONT_INACTIVE
 
     def enable_slider(self):
         if self.is_unchanged:

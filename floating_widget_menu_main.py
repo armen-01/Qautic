@@ -6,6 +6,7 @@ import json
 from PyQt6.QtCore import Qt, QFileInfo
 from PyQt6.QtWidgets import QListWidgetItem, QPushButton, QSizePolicy, QFileDialog, QFileIconProvider, QMessageBox
 from ui_sub_widgets.program_item import ProgramItem
+import ui_colors
 
 class FloatingWidgetMenuMain(StyledSplitter):
     def __init__(self, parent=None):
@@ -42,18 +43,23 @@ class FloatingWidgetMenuMain(StyledSplitter):
         self.selected_program = None
         self.programs_area.list_widget.currentItemChanged.connect(self._on_program_selected)
 
+        # Connect the save button in settings_area
         if hasattr(settings_area, 'btn'):
             settings_area.btn.clicked.connect(self._on_save_settings)
+
+        # Connect the clear button in programs_area
+        if hasattr(self.programs_area, 'btn'):
+            self.programs_area.btn.clicked.connect(self._on_clear_programs)
 
     def _add_plus_button(self):
         plus_item = QListWidgetItem()
         plus_button = QPushButton("+")
-        plus_button.setStyleSheet('''QPushButton {
-                                  font-size: 18px; color: #aaa; background: transparent;
-                                  }
-                                  QPushButton:pressed, QPushButton:checked, QPushButton:hover, QPushButton:focus {
+        plus_button.setStyleSheet(f'''QPushButton {{
+                                  font-size: 18px; color: {ui_colors.ADD_BUTTON}; background: transparent;
+                                  }}
+                                  QPushButton:pressed, QPushButton:checked, QPushButton:hover, QPushButton:focus {{
                                   background: transparent; border: none; outline: none;
-                                  }''')
+                                  }}''')
         plus_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         plus_button.clicked.connect(self._on_add_program)
         lw = self.programs_area.list_widget
@@ -82,9 +88,9 @@ class FloatingWidgetMenuMain(StyledSplitter):
             prog_item = ProgramItem(
                 name=exe_name,
                 path=exe_path,
-                priority=-1,
                 icon=icon,
-                settings=default_settings
+                settings=default_settings,
+                parent_list=lw  # Ensure parent_list is set
             )
             # Insert before the plus button
             lw.insertItem(lw.count()-1, prog_item)
@@ -105,7 +111,6 @@ class FloatingWidgetMenuMain(StyledSplitter):
                 prog_item = ProgramItem(
                     name=entry['name'],
                     path=entry['path'],
-                    priority=entry.get('priority', -1),
                     icon=icon,
                     settings=entry.get('settings', {}),
                     parent_list=self.programs_area.list_widget
@@ -124,7 +129,6 @@ class FloatingWidgetMenuMain(StyledSplitter):
                 programs.append({
                     'name': item.name,
                     'path': item.path,
-                    'priority': item.priority,
                     'settings': getattr(item, 'settings', {})
                 })
         with open(self.programs_json_path, 'w', encoding='utf-8') as f:
@@ -147,4 +151,12 @@ class FloatingWidgetMenuMain(StyledSplitter):
             return
         for key, tile in self.settings_tiles.items():
             self.selected_program.settings[key] = tile.get_state()
+        self._save_programs()
+
+    def _on_clear_programs(self):
+        self.programs_area.list_widget.clear()
+        self._add_plus_button()
+        self.selected_program = None
+        for tile in self.settings_tiles.values():
+            tile.set_state(0, True)
         self._save_programs()

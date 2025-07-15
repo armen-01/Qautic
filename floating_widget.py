@@ -5,6 +5,7 @@ import os
 from floating_widget_painter import FloatingWidgetPainter
 from ui_sub_widgets.hide_button import HideButton
 from floating_widget_menu_main import FloatingWidgetMenuMain
+import ui_colors
 
 class FloatingWidget(QWidget):
     WIDGET_WIDTH:int
@@ -58,6 +59,7 @@ class FloatingWidget(QWidget):
         logo_main.setAlignment(Qt.AlignmentFlag.AlignCenter)
         image_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'graphics', 'logo_qautic.png')
         logo_picture = QPixmap(image_path)
+        #logo_picture = ui_colors.invert_pixmap_colors(QPixmap(image_path))
         logo_main.setPixmap(logo_picture.scaledToHeight(self.notch_height - 30, Qt.TransformationMode.SmoothTransformation))
         logo_main.setContentsMargins(5, 0, 0, 0)
         logo_main.setFixedHeight(self.notch_height)

@@ -1,7 +1,8 @@
-from PyQt6.QtWidgets import QWidget, QListWidget, QVBoxLayout, QLabel, QHBoxLayout, QPushButton
+from PyQt6.QtWidgets import QWidget, QListWidget, QVBoxLayout, QLabel, QHBoxLayout, QPushButton, QSpacerItem, QSizePolicy
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QFont, QFontDatabase
 import os
+import ui_colors
 
 class SnapListWidget(QListWidget):
     def wheelEvent(self, event):
@@ -31,10 +32,6 @@ class ListBase(QWidget):
         ListBase.sz = sz
         ListBase._instances.append(self)
 
-        color_border = "#4a4a4a"
-        color_bg = "#363636"
-        color_font = "#eee"
-
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
@@ -53,7 +50,7 @@ class ListBase(QWidget):
             #base_list_header {{
                 background: none;
                 border: none;
-                color: {color_font};
+                color: {ui_colors.FONT};
             }}
         """)
 
@@ -67,41 +64,40 @@ class ListBase(QWidget):
         header_container.setObjectName("header_container")
         header_container.setStyleSheet(f"""
             QWidget#header_container {{
-                background-color: {color_bg};
-                border-left: 1px solid {color_border};
-                border-top: 1px solid {color_border};
-                color: {color_font};
+                background-color: {ui_colors.MAIN_BG};
+                border-left: 1px solid {ui_colors.ELEMENT_LIGHT};
+                border-top: 1px solid {ui_colors.ELEMENT_LIGHT};
+                color: {ui_colors.FONT};
                 border-top-left-radius: 10px;
                 border-bottom: 1px solid;
                 border-bottom-color: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:.05 {color_bg}, stop:0.5 {color_font}, stop:.95 {color_bg});
+                    stop:.05 {ui_colors.MAIN_BG}, stop:0.5 {ui_colors.FONT}, stop:.95 {ui_colors.MAIN_BG});
             }}
         """)
         header_inner_layout = QHBoxLayout(header_container)
         header_inner_layout.setContentsMargins(0, 0, 0, 0)
         header_inner_layout.setSpacing(0)
-        if label == "Auto Settings":
-            self.autosettings_spacing = 28 # Save button size
-            from PyQt6.QtWidgets import QSpacerItem, QSizePolicy
-            spacer = QSpacerItem(self.autosettings_spacing, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
-            header_inner_layout.addItem(spacer)
+
+        self.autosettings_spacing = 28 # Button size
+        spacer = QSpacerItem(self.autosettings_spacing, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
+        header_inner_layout.addItem(spacer)
+        
         header_inner_layout.addStretch(1)
         header_inner_layout.addWidget(self.header_label, stretch=0)
-        if label == "Auto Settings":
-            font_path_icon = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'assets', 'fonts', 'MaterialSymbolsRounded-VariableFont_FILL,GRAD,opsz,wght.ttf')
-            font_id_icon = QFontDatabase.addApplicationFont(font_path_icon)
-            font_families_icon = QFontDatabase.applicationFontFamilies(font_id_icon)
-            icon_font = QFont(font_families_icon[0])
-            icon_font.setPointSize(self.autosettings_spacing//2)
-            self.btn = QPushButton("\uE161", self)
-            self.btn.setFont(icon_font)
-            self.btn.setStyleSheet("QPushButton { background: transparent; border: none; color: #666; padding: 0 8px; } QPushButton:pressed { background: transparent; }")
-            self.btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            self.btn.setFixedHeight(self.header_label.sizeHint().height())
-            header_inner_layout.addStretch(1)
-            header_inner_layout.addWidget(self.btn, stretch=0)
-        else:
-            header_inner_layout.addStretch(1)
+
+        font_path_icon = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'assets', 'fonts', 'MaterialSymbolsRounded-VariableFont_FILL,GRAD,opsz,wght.ttf')
+        font_id_icon = QFontDatabase.addApplicationFont(font_path_icon)
+        font_families_icon = QFontDatabase.applicationFontFamilies(font_id_icon)
+        icon_font = QFont(font_families_icon[0])
+        icon_font.setPointSize(self.autosettings_spacing//2)
+        self.btn = QPushButton("\uE161" if label=="Auto Settings" else "\uE5CD", self)
+        self.btn.setFont(icon_font)
+        self.btn.setStyleSheet("QPushButton { background: transparent; border: none; color: #999; padding: 0 8px; } QPushButton:pressed { background: transparent; }")
+        self.btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn.setFixedHeight(self.header_label.sizeHint().height())
+        header_inner_layout.addStretch(1)
+        header_inner_layout.addWidget(self.btn, stretch=0)
+
         header_layout.addWidget(header_container)
         layout.addLayout(header_layout)
 
@@ -112,9 +108,9 @@ class ListBase(QWidget):
         common_style = f"""
             #base_list {{
             outline: 0;
-            background-color: {color_bg};
-            border-left: 1px solid {color_border};
-            border-bottom: 1px solid {color_border};
+            background-color: {ui_colors.MAIN_BG};
+            border-left: 1px solid {ui_colors.ELEMENT_LIGHT};
+            border-bottom: 1px solid {ui_colors.ELEMENT_LIGHT};
             border-bottom-left-radius: {bottom_radius}px;
             padding-right: 5px;
             padding-left: 15px;
@@ -126,7 +122,7 @@ class ListBase(QWidget):
             width: 5px;
             }}
             QScrollBar::handle:vertical {{
-            background: {color_border};
+            background: {ui_colors.ELEMENT_LIGHT};
             min-height: 20px;
             border-radius: 2px;
             }}
@@ -151,9 +147,9 @@ class ListBase(QWidget):
             padding-left: 5px;
             padding-right: 5px;
             border-radius: 15px;
-            background-color: {color_bg};
-            border: 1px solid {color_border};
-            color: {color_font};
+            background-color: {ui_colors.MAIN_BG};
+            border: 1px solid {ui_colors.ELEMENT_LIGHT};
+            color: {ui_colors.FONT};
             min-width: {self.sz}px;
             min-height: {self.sz}px;
             max-width: {self.sz}px;
@@ -169,15 +165,15 @@ class ListBase(QWidget):
             margin: 0px;
             padding-top: 0px;
             padding-bottom: 0px;
-            border: 0px solid {color_border};
-            color: {color_font};
+            border: 0px solid {ui_colors.ELEMENT_LIGHT};
+            color: {ui_colors.FONT};
             min-width: {self.sz}px;
             min-height: {self.sz}px;
             max-width: {self.sz}px;
             max-height: {self.sz}px;
             }}
             #base_list::item:selected {{
-            background-color: {color_bg};
+            background-color: {ui_colors.MAIN_BG};
             }}
             """
 

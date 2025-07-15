@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import QWidget
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPainter, QBrush, QPainterPath, QLinearGradient, QColor
 from math import atan2, sin
+import ui_colors
 
 class FloatingWidgetPainter:
     def __init__(self, widget: QWidget, radius_corner:int = 1, radius_fillet:int = 1):
@@ -28,14 +29,14 @@ class FloatingWidgetPainter:
         bg_rect_path.lineTo(rect.left(), rect.top() + self.corner_radius)
         bg_rect_path.quadTo(rect.left(), rect.top(), rect.left() + self.corner_radius, rect.top())
         bg_gradient = QLinearGradient(rect.right() - self.widget.notch_width, rect.top(), rect.left(), rect.top())
-        bg_gradient.setColorAt(0, QColor("#202020"))
-        bg_gradient.setColorAt(1, QColor("#2C2C2C"))
+        bg_gradient.setColorAt(0, QColor(ui_colors.BASE_BACK_DARK))
+        bg_gradient.setColorAt(1, QColor(ui_colors.BASE_BG))
         painter.fillPath(bg_rect_path, QBrush(bg_gradient))
 
         # Main shape gradient
         gradient = QLinearGradient(rect.right(), rect.top(), rect.right(), rect.top() + self.widget.notch_height)
-        gradient.setColorAt(0, QColor("#363636"))
-        gradient.setColorAt(1, QColor("#2C2C2C"))
+        gradient.setColorAt(0, QColor(ui_colors.MAIN_BG))
+        gradient.setColorAt(1, QColor(ui_colors.BASE_BG))
         brush = QBrush(gradient)
         painter.setBrush(brush)
         painter.setPen(Qt.PenStyle.NoPen)
@@ -82,7 +83,7 @@ class FloatingWidgetPainter:
         border_path.quadTo(rect.left(), rect.bottom(), rect.left() + self.corner_radius, rect.bottom())
         border_path.lineTo(rect.right(), rect.bottom())
         
-        painter.setPen(QColor("#4a4a4a"))
+        painter.setPen(QColor(ui_colors.ELEMENT_LIGHT))
         painter.setBrush(Qt.BrushStyle.NoBrush)
         pen = painter.pen()
         pen.setWidthF(1)
