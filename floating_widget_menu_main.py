@@ -56,10 +56,9 @@ class FloatingWidgetMenuMain(StyledSplitter):
         plus_button = QPushButton("+")
         plus_button.setStyleSheet(f'''QPushButton {{
                                   font-size: 18px; color: {ui_colors.ADD_BUTTON}; background: transparent;
-                                  }}
-                                  QPushButton:pressed, QPushButton:checked, QPushButton:hover, QPushButton:focus {{
-                                  background: transparent; border: none; outline: none;
                                   }}''')
+                                  #QPushButton:pressed, QPushButton:checked, QPushButton:hover, QPushButton:focus {{
+                                  #background: {ui_colors.ITEM_SELECTED_BG}; border: none; outline: none;}}
         plus_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         plus_button.clicked.connect(self._on_add_program)
         lw = self.programs_area.list_widget

@@ -11,6 +11,7 @@ class FloatingWidgetPainter:
         self.fillet_radius = radius_fillet
 
     def paint(self, event):
+        ui_colors.load_theme_preferences_and_update_colors()
         painter = QPainter(self.widget)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         rect = self.widget.rect().adjusted(

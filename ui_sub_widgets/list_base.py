@@ -91,8 +91,9 @@ class ListBase(QWidget):
         icon_font = QFont(font_families_icon[0])
         icon_font.setPointSize(self.autosettings_spacing//2)
         self.btn = QPushButton("\uE161" if label=="Auto Settings" else "\uE5CD", self)
+        self.btn.setToolTip("Save Settings" if label=="Auto Settings" else "Clear Programs")
         self.btn.setFont(icon_font)
-        self.btn.setStyleSheet("QPushButton { background: transparent; border: none; color: #999; padding: 0 8px; } QPushButton:pressed { background: transparent; }")
+        self.btn.setStyleSheet(f"QPushButton {{ background: transparent; border: none; color: {ui_colors.LIST_BTN}; padding: 0 8px; }} QPushButton:pressed {{ background: transparent; }}")
         self.btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn.setFixedHeight(self.header_label.sizeHint().height())
         header_inner_layout.addStretch(1)
@@ -127,7 +128,7 @@ class ListBase(QWidget):
             border-radius: 2px;
             }}
             QScrollBar::handle:vertical:hover {{
-            background: #666;
+            background: {ui_colors.SLIDER_BAR};
             }}
             QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
             background: none;
@@ -156,7 +157,7 @@ class ListBase(QWidget):
             max-height: {self.sz}px;
             }}
             #base_list::item:selected {{
-            background-color: #555;
+            background-color: {ui_colors.ITEM_SELECTED_BG};
             }}
             """
         else:
@@ -197,13 +198,6 @@ class ListBase(QWidget):
         layout.addWidget(self.list_widget)
 
         self.setLayout(layout)
-
-    @classmethod
-    def update_grid_size(cls, value):
-        cls.sz = value
-        if len(cls._instances) > 1:
-            inst = cls._instances[0]
-            inst.list_widget.setGridSize(QSize(value, value))
 
     def add_item(self, item):
         self.list_widget.addItem(item)
