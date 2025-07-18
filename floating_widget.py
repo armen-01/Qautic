@@ -37,6 +37,7 @@ class FloatingWidget(QWidget):
         self.move(self.target_x, self.target_y)
         self._init_layout()
         self.painter = FloatingWidgetPainter(self, self.main_radius, 10)
+        self.update_style()
 
     def _add_shadow(self):
         shadow = QGraphicsDropShadowEffect(self)
@@ -55,20 +56,18 @@ class FloatingWidget(QWidget):
         
         ## Widgets ##
         # Logo
-        logo_main = QLabel("logo", self)
-        logo_main.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        image_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'graphics', 'logo_qautic.png')
-        logo_picture = ui_colors.colorize_pixmap(QPixmap(image_path))
-        logo_main.setPixmap(logo_picture.scaledToHeight(self.notch_height - 30, Qt.TransformationMode.SmoothTransformation))
-        logo_main.setContentsMargins(5, 0, 0, 0)
-        logo_main.setFixedHeight(self.notch_height)
+        self.logo_main = QLabel("logo", self)
+        self.logo_main.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.image_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'graphics', 'logo_qautic.png')
+        self.logo_main.setContentsMargins(5, 0, 0, 0)
+        self.logo_main.setFixedHeight(self.notch_height)
         # Hide button
         hide_button = HideButton(self)
         hide_button.setContentsMargins(10, 5, 0, 0)
         hide_button.setFixedHeight(self.notch_height)
         
         ## Top layout ##
-        layout_top.addWidget(logo_main)
+        layout_top.addWidget(self.logo_main)
         layout_top.addWidget(hide_button)
         top_midpoint = (self.notch_width + self.notch_slide//2)
         layout_top.setStretch(0, self.WIDGET_WIDTH - top_midpoint)
@@ -83,6 +82,10 @@ class FloatingWidget(QWidget):
         layout.setStretch(1, self.WIDGET_HEIGHT-self.splitter_height-self.notch_height)
         
         self.setLayout(layout)
+
+    def update_style(self):
+        logo_picture = ui_colors.colorize_pixmap(QPixmap(self.image_path))
+        self.logo_main.setPixmap(logo_picture.scaledToHeight(self.notch_height - 30, Qt.TransformationMode.SmoothTransformation))
 
     def paintEvent(self, event):
         self.painter.paint(event)

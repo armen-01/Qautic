@@ -18,6 +18,7 @@ class SettingsTileWidget(QWidget):
         self.ttip = tooltip
         self._setup_fonts()
         self._init_ui()
+        self.update_style()
 
     def _setup_fonts(self):
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -39,7 +40,6 @@ class SettingsTileWidget(QWidget):
         icon_font.setPointSize(20)
         self.icon_label.setFont(icon_font)
         self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.set_icon_color()
         layout.addWidget(self.icon_label)
         # Incremental type
         if self.type_ == 0:
@@ -51,7 +51,6 @@ class SettingsTileWidget(QWidget):
             self.value_button.setCursor(Qt.CursorShape.PointingHandCursor)
             self.value_button.setFlat(True)
             self.value_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-            self.set_button_color()
             self.value_button.clicked.connect(self.cycle_option)
             layout.addWidget(self.value_button, alignment=Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter)
         # Slider type
@@ -61,6 +60,24 @@ class SettingsTileWidget(QWidget):
             self.slider.valueChanged.connect(self._slider_value_changed)
             self.slider.setRange(0, 100)
             self.slider.setValue(0)
+            layout.addWidget(self.slider)
+            self.slider.sliderPressed.connect(self.enable_slider)
+        # Text field type (type_ == 2)
+        elif self.type_ == 2:
+            self.text_field = QLineEdit("0", self)
+            text_font = QFont(self.text_font_family)
+            text_font.setPointSize(12)
+            self.text_field.setFont(text_font)
+            self.text_field.setAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
+            self.text_field.textChanged.connect(self._on_text_field_changed)
+            layout.addWidget(self.text_field, alignment=Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter)
+        self.setLayout(layout)
+
+    def update_style(self):
+        self.set_icon_color()
+        if self.type_ == 0:
+            self.set_button_color()
+        elif self.type_ == 1:
             self.slider.setStyleSheet(f'''
                 QSlider {{
                     min-height: 18px;
@@ -90,19 +107,8 @@ class SettingsTileWidget(QWidget):
                     margin: 0;
                 }}
             ''')
-            layout.addWidget(self.slider)
-            self.slider.sliderPressed.connect(self.enable_slider)
-        # Text field type (type_ == 2)
         elif self.type_ == 2:
-            self.text_field = QLineEdit("0", self)
-            text_font = QFont(self.text_font_family)
-            text_font.setPointSize(12)
-            self.text_field.setFont(text_font)
             self._set_text_field_style(enabled=not self.is_unchanged)
-            self.text_field.setAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
-            self.text_field.textChanged.connect(self._on_text_field_changed)
-            layout.addWidget(self.text_field, alignment=Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter)
-        self.setLayout(layout)
 
     def _set_text_field_style(self, enabled=True):
         color = ui_colors.FONT if enabled else ui_colors.FONT_INACTIVE
@@ -280,3 +286,6 @@ class SettingsTile(QListWidgetItem):
         return self.widget.get_state()
     def set_state(self, tile_value, is_unchanged):
         self.widget.set_state(tile_value, is_unchanged)
+
+    def update_style(self):
+        self.widget.update_style()

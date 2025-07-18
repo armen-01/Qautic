@@ -73,3 +73,4 @@ def default_settings_item(self):
         menu.exec(def_lbl.mapToGlobal(point))
 
     def_lbl.customContextMenuRequested.connect(_on_context_menu)
+    return def_lbl

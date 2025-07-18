@@ -15,8 +15,11 @@ class HideButton(QLabel):
         self.setFont(font)
         self.setText("\uEAC9") #\uE15A
         self.setAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
-        self.setStyleSheet(f"color: {ui_colors.HIDE_BTN_INACTIVE}; background: transparent;")
         self._hover = False
+        self.update_style()
+
+    def update_style(self):
+        self.setStyleSheet(f"color: {ui_colors.HIDE_BTN_INACTIVE}; background: transparent;")
 
     def enterEvent(self, event):
         self._hover = True

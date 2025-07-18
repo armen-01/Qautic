@@ -22,7 +22,7 @@ class FloatingWidgetMenuMain(StyledSplitter):
         self.programs_json_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'programs.json')
         self._load_programs()
         self._add_plus_button()
-        default_settings_item(self)
+        self.default_settings_label = default_settings_item(self)
         # Settings
         self.settings_tiles = {}
         settings_area = ListBase(self, parent.main_radius - (parent.splitter_height*2.4), label="Auto Settings", sz=92)
@@ -52,21 +52,28 @@ class FloatingWidgetMenuMain(StyledSplitter):
         # Connect the clear button in programs_area
         if hasattr(self.programs_area, 'btn'):
             self.programs_area.btn.clicked.connect(self._on_clear_programs)
+        
+        self.update_style()
+
+    def update_style(self):
+        if hasattr(self, 'plus_button'):
+            self.plus_button.setStyleSheet(f'''QPushButton {{
+                                      font-size: 18px; color: {ui_colors.ADD_BUTTON}; background: transparent;
+                                      }}''')
+        if hasattr(self, 'default_settings_label'):
+            self.default_settings_label.setStyleSheet(f"color: {ui_colors.ADD_BUTTON};")
 
     def _add_plus_button(self):
         plus_item = QListWidgetItem()
-        plus_button = QPushButton("+")
-        plus_button.setStyleSheet(f'''QPushButton {{
+        self.plus_button = QPushButton("+")
+        self.plus_button.setStyleSheet(f'''QPushButton {{
                                   font-size: 18px; color: {ui_colors.ADD_BUTTON}; background: transparent;
                                   }}''')
-                                  #QPushButton:pressed, QPushButton:checked, QPushButton:hover, QPushButton:focus {{
-                                  #background: {ui_colors.ITEM_SELECTED_BG}; border: none; outline: none;}}
-        plus_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        plus_button.clicked.connect(self._on_add_program)
+        self.plus_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.plus_button.clicked.connect(self._on_add_program)
         lw = self.programs_area.list_widget
         lw.addItem(plus_item)
-        lw.setItemWidget(plus_item, plus_button)
-        #self.plus_item = plus_item
+        lw.setItemWidget(plus_item, self.plus_button)
 
     def _on_add_program(self):
         file_dialog = QFileDialog(self)
@@ -123,9 +130,6 @@ class FloatingWidgetMenuMain(StyledSplitter):
         programs = []
         for i in range(lw.count()):
             item = lw.item(i)
-            # Skip the plus button
-            # if lw.itemWidget(item):
-            #     continue
             if hasattr(item, 'name') and hasattr(item, 'path'):
                 programs.append({
                     'name': item.name,
@@ -157,7 +161,7 @@ class FloatingWidgetMenuMain(StyledSplitter):
     def _on_clear_programs(self):
         self.programs_area.list_widget.clear()
         self._add_plus_button()
-        default_settings_item(self)
+        self.default_settings_label = default_settings_item(self)
         self.selected_program = None
         for tile in self.settings_tiles.values():
             tile.set_state(0, True)

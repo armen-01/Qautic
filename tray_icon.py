@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import QSystemTrayIcon, QMenu, QApplication, QStyle
 from PyQt6.QtGui import QIcon, QAction, QActionGroup
 import os
 import json
+from ui_colors import load_theme_preferences_and_update_colors, update_all_widgets
 
 class TrayIcon(QSystemTrayIcon):
     def __init__(self, floating_widget, parent=None):
@@ -74,6 +75,10 @@ class TrayIcon(QSystemTrayIcon):
             else:
                 self.floating_widget.slide_in()
 
+    def _update_theme(self):
+        load_theme_preferences_and_update_colors()
+        update_all_widgets(self.floating_widget)
+
     def set_theme_pref(self, theme):
         prefs = self.load_preferences()
         prefs['theme'] = theme
@@ -81,12 +86,14 @@ class TrayIcon(QSystemTrayIcon):
         self.action_theme_light.setChecked(theme == 'light')
         self.action_theme_dark.setChecked(theme == 'dark')
         self.action_theme_auto.setChecked(theme == 'auto')
+        self._update_theme()
 
     def set_system_color_pref(self, checked):
         prefs = self.load_preferences()
         prefs['use_system_color'] = checked
         self.save_preferences(prefs)
         self.action_theme_system.setChecked(checked)
+        self._update_theme()
 
     def load_theme_preferences(self):
         prefs = self.load_preferences()

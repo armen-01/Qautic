@@ -6,17 +6,13 @@ import os
 import json
 
 def update_all_widgets(parent):
-    # Force stylesheet refresh by resetting the stylesheet
-    if hasattr(parent, "setStyleSheet"):
-        parent.setStyleSheet(parent.styleSheet())
-    # Force style engine to re-polish
-    if hasattr(parent, "style"):
-        parent.style().unpolish(parent)
-        parent.style().polish(parent)
+    if hasattr(parent, 'update_style'):
+        parent.update_style()
     parent.update()
-    for child in parent.children():
-        if isinstance(child, QWidget):
-            update_all_widgets(child)
+    for child in parent.findChildren(QWidget):
+        if hasattr(child, 'update_style'):
+            child.update_style()
+        child.update()
 
 def adjust_color(hex_color, delta):
     c = QColor(hex_color)
