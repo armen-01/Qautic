@@ -7,6 +7,7 @@ from PyQt6.QtCore import Qt, QFileInfo
 from PyQt6.QtWidgets import QListWidgetItem, QPushButton, QSizePolicy, QFileDialog, QFileIconProvider, QMessageBox
 from ui_sub_widgets.program_item import ProgramItem
 import ui_colors
+from floating_widget_default_item import default_settings_item
 
 class FloatingWidgetMenuMain(StyledSplitter):
     def __init__(self, parent=None):
@@ -21,6 +22,7 @@ class FloatingWidgetMenuMain(StyledSplitter):
         self.programs_json_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'programs.json')
         self._load_programs()
         self._add_plus_button()
+        default_settings_item(self)
         # Settings
         self.settings_tiles = {}
         settings_area = ListBase(self, parent.main_radius - (parent.splitter_height*2.4), label="Auto Settings", sz=92)
@@ -34,7 +36,7 @@ class FloatingWidgetMenuMain(StyledSplitter):
         self.settings_tiles["notifications"] = SettingsTile(0, "\uE7F7", "\uE7F6", ["On", "Off"], 2, "Notifications", "notifications", settings_area.list_widget)
         self.settings_tiles["hotspot"] = SettingsTile(0, "\uE1E2", "\uE0CE", ["On", "Off"], 2, "Hotspot", "hotspot", settings_area.list_widget)
         self.settings_tiles["systemcolor"] = SettingsTile(0, "\uEB37", "\uEC72", ["Light", "Dark"], 2, "System Color", "systemcolor", settings_area.list_widget)
-        self.settings_tiles["mic"] = SettingsTile(0, "\uE029", "\uE02B", ["On", "Off"], 2, "Microphone", "mic", settings_area.list_widget)
+        self.settings_tiles["startup"] = SettingsTile(0, "\uEB9B", "\uEBA5", ["On", "Off"], 2, "Launch at System Startup", "startup", settings_area.list_widget)
         self.settings_tiles["priority"] = SettingsTile(2, "\uE7FD", "\uE510", [], 0, "Priority", "priority", settings_area.list_widget)
         
         self.addWidget(self.programs_area)
@@ -64,7 +66,7 @@ class FloatingWidgetMenuMain(StyledSplitter):
         lw = self.programs_area.list_widget
         lw.addItem(plus_item)
         lw.setItemWidget(plus_item, plus_button)
-        self.plus_item = plus_item
+        #self.plus_item = plus_item
 
     def _on_add_program(self):
         file_dialog = QFileDialog(self)
@@ -92,7 +94,7 @@ class FloatingWidgetMenuMain(StyledSplitter):
                 parent_list=lw  # Ensure parent_list is set
             )
             # Insert before the plus button
-            lw.insertItem(lw.count()-1, prog_item)
+            lw.insertItem(lw.count()-2, prog_item)
             self.selected_program = prog_item
             self._on_program_selected(prog_item, None)
             self._save_programs()
@@ -122,8 +124,8 @@ class FloatingWidgetMenuMain(StyledSplitter):
         for i in range(lw.count()):
             item = lw.item(i)
             # Skip the plus button
-            if lw.itemWidget(item):
-                continue
+            # if lw.itemWidget(item):
+            #     continue
             if hasattr(item, 'name') and hasattr(item, 'path'):
                 programs.append({
                     'name': item.name,
@@ -155,6 +157,7 @@ class FloatingWidgetMenuMain(StyledSplitter):
     def _on_clear_programs(self):
         self.programs_area.list_widget.clear()
         self._add_plus_button()
+        default_settings_item(self)
         self.selected_program = None
         for tile in self.settings_tiles.values():
             tile.set_state(0, True)

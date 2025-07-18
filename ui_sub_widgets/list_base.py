@@ -41,9 +41,9 @@ class ListBase(QWidget):
         font_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'assets', 'fonts', 'MuseoModerno-VariableFont_wght.ttf')
         font_id = QFontDatabase.addApplicationFont(font_path)
         font_families = QFontDatabase.applicationFontFamilies(font_id)
-        font = QFont(font_families[0])
-        font.setPointSizeF(12.5)
-        self.header_label.setFont(font)
+        self.font = QFont(font_families[0])
+        self.font.setPointSizeF(12.5)
+        self.header_label.setFont(self.font)
         self.header_label.setObjectName("base_list_header")
         self.header_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.header_label.setStyleSheet(f"""
