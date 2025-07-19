@@ -2,8 +2,7 @@ from PyQt6.QtGui import QColor, QPixmap, QImage, QPainter
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QWidget
 import winaccent
-import os
-import json
+from json_handler import load_preferences
 
 def update_all_widgets(parent):
     if hasattr(parent, 'update_style'):
@@ -47,12 +46,7 @@ def colorize_pixmap(pixmap: QPixmap, color: QColor = None) -> QPixmap:
 def load_theme_preferences_and_update_colors():
     global BASE_BG, BASE_BACK_DARK, MAIN_BG, SPLITTER, ELEMENT_LIGHT, SLIDER_FILLED, SLIDER_BAR, FONT, FONT_INACTIVE, HIDE_BTN_INACTIVE, HIDE_BTN_ACTIVE, ADD_BUTTON, ITEM_SELECTED_BG, LIST_BTN
     # Load preferences
-    pref_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'preferences.json')
-    try:
-        with open(pref_path, 'r', encoding='utf-8') as f:
-            prefs = json.load(f)
-    except Exception:
-        prefs = {}
+    prefs = load_preferences()
     theme = prefs.get('theme', 'dark')
     use_system_color = prefs.get('use_system_color', False)
     # Determine BASE_BG

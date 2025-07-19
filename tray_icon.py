@@ -1,15 +1,13 @@
 from PyQt6.QtWidgets import QSystemTrayIcon, QMenu, QApplication, QStyle
 from PyQt6.QtGui import QIcon, QAction, QActionGroup
-import os
-import json
 from ui_colors import load_theme_preferences_and_update_colors, update_all_widgets
+from json_handler import load_preferences, save_preferences
 
 class TrayIcon(QSystemTrayIcon):
     def __init__(self, floating_widget, parent=None):
         super().__init__(parent)
         self.floating_widget = floating_widget
         self.slider_value = 74
-        self.preferences_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'preferences.json')
 
         # Set a default icon
         app = QApplication.instance()
@@ -80,40 +78,26 @@ class TrayIcon(QSystemTrayIcon):
         update_all_widgets(self.floating_widget)
 
     def set_theme_pref(self, theme):
-        prefs = self.load_preferences()
+        prefs = load_preferences()
         prefs['theme'] = theme
-        self.save_preferences(prefs)
+        save_preferences(prefs)
         self.action_theme_light.setChecked(theme == 'light')
         self.action_theme_dark.setChecked(theme == 'dark')
         self.action_theme_auto.setChecked(theme == 'auto')
         self._update_theme()
 
     def set_system_color_pref(self, checked):
-        prefs = self.load_preferences()
+        prefs = load_preferences()
         prefs['use_system_color'] = checked
-        self.save_preferences(prefs)
+        save_preferences(prefs)
         self.action_theme_system.setChecked(checked)
         self._update_theme()
 
     def load_theme_preferences(self):
-        prefs = self.load_preferences()
+        prefs = load_preferences()
         theme = prefs.get('theme', 'auto')
         use_system_color = prefs.get('use_system_color', False)
         self.action_theme_light.setChecked(theme == 'light')
         self.action_theme_dark.setChecked(theme == 'dark')
         self.action_theme_auto.setChecked(theme == 'auto')
         self.action_theme_system.setChecked(use_system_color)
-
-    def load_preferences(self):
-        try:
-            with open(self.preferences_path, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception:
-            return {}
-
-    def save_preferences(self, prefs):
-        try:
-            with open(self.preferences_path, 'w', encoding='utf-8') as f:
-                json.dump(prefs, f, indent=2)
-        except Exception as e:
-            print(f"Error saving preferences: {e}")
