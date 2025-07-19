@@ -34,7 +34,11 @@ class FloatingWidgetMenuMain(StyledSplitter):
         self.selected_program = None
         self.programs_area.list_widget.currentItemChanged.connect(self._on_program_selected)
 
-        self.settings_tiles["airplane"].state_changed.connect(self._on_airplane_mode_changed)
+        # Connect signals for tile interactions
+        self.settings_tiles["airplane"].user_interacted.connect(self._on_airplane_mode_changed)
+        self.settings_tiles["wifi"].user_interacted.connect(self._on_radio_dependency_changed)
+        self.settings_tiles["hotspot"].user_interacted.connect(self._on_radio_dependency_changed)
+
         if hasattr(self.settings_area, 'btn'):
             self.settings_area.btn.clicked.connect(self._on_save_settings)
         if hasattr(self.programs_area, 'btn'):
@@ -133,9 +137,16 @@ class FloatingWidgetMenuMain(StyledSplitter):
         else:
             self.settings_area.setEnabled(True)
             self.selected_program = current
-            for key, tile in self.settings_tiles.items():
-                state = current.settings.get(key, {"tile_value": 0, "is_unchanged": True})
-                tile.set_state(state["tile_value"], state["is_unchanged"])
+            
+            for tile in self.settings_tiles.values():
+                tile.widget.blockSignals(True)
+            try:
+                for key, tile in self.settings_tiles.items():
+                    state = current.settings.get(key, {"tile_value": 0, "is_unchanged": True})
+                    tile.set_state(state["tile_value"], state["is_unchanged"])
+            finally:
+                for tile in self.settings_tiles.values():
+                    tile.widget.blockSignals(False)
 
             is_default_item = (current == self.default_item)
             self.settings_tiles["priority"].setEnabled(not is_default_item)
@@ -145,6 +156,7 @@ class FloatingWidgetMenuMain(StyledSplitter):
                 self.settings_tiles["priority"].set_state(priority_state["tile_value"], priority_state["is_unchanged"])
 
             self._on_airplane_mode_changed()
+            self._on_radio_dependency_changed(None)
 
     def _on_save_settings(self):
         if not self.selected_program: return
@@ -179,7 +191,36 @@ class FloatingWidgetMenuMain(StyledSplitter):
         
         self.settings_tiles["wifi"].setEnabled(not is_on)
         self.settings_tiles["bt"].setEnabled(not is_on)
+        self.settings_tiles["hotspot"].setEnabled(not is_on)
         
         if is_on:
             self.settings_tiles["wifi"].set_state(0, True)
             self.settings_tiles["bt"].set_state(0, True)
+            self.settings_tiles["hotspot"].set_state(0, True)
+
+    def _on_radio_dependency_changed(self, source_key):
+        if not self.selected_program or self.selected_program == self.add_item:
+            return
+
+        hotspot_tile = self.settings_tiles["hotspot"]
+        wifi_tile = self.settings_tiles["wifi"]
+
+        hotspot_tile.widget.blockSignals(True)
+        wifi_tile.widget.blockSignals(True)
+
+        try:
+            hotspot_state = hotspot_tile.get_state()
+            wifi_state = wifi_tile.get_state()
+
+            if source_key == 'hotspot':
+                if not hotspot_state['is_unchanged'] and hotspot_state['tile_value'] == 0:
+                    if wifi_state['is_unchanged'] or wifi_state['tile_value'] == 1:
+                        wifi_tile.set_state(0, False)
+
+            elif source_key == 'wifi':
+                if not wifi_state['is_unchanged'] and wifi_state['tile_value'] == 1:
+                    if not hotspot_state['is_unchanged'] and hotspot_state['tile_value'] == 0:
+                        hotspot_tile.set_state(0, True)
+        finally:
+            hotspot_tile.widget.blockSignals(False)
+            wifi_tile.widget.blockSignals(False)

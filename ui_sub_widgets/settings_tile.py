@@ -5,7 +5,7 @@ import os
 import ui_colors
 
 class SettingsTileWidget(QWidget):
-    state_changed = pyqtSignal()
+    user_interacted = pyqtSignal(str)
 
     def __init__(self, type_: int, symbol_on: str, symbol_off: str, options: list[str], options_count: int, tooltip: str, key: str, parent=None):
         super().__init__(parent)
@@ -132,25 +132,24 @@ class SettingsTileWidget(QWidget):
         if self.is_unchanged:
             self.is_unchanged = False
         self.update_style()
-        self.state_changed.emit()
+        self.user_interacted.emit(self.key)
 
     def _slider_value_changed(self, value):
         self.tile_value = value
         self.slider.setToolTip(f"{value}%")
-        self.state_changed.emit()
 
     def enable_slider(self):
         if self.is_unchanged:
             self.is_unchanged = False
             self.update_style()
-            self.state_changed.emit()
+            self.user_interacted.emit(self.key)
 
     def cycle_option(self):
         if self.type_ == 0 and self.options_count > 0 and not self.is_unchanged:
             self.tile_value = (self.tile_value + 1) % self.options_count
             self.value_button.setText(str(self.options[self.tile_value]))
             self.update_style()
-            self.state_changed.emit()
+            self.user_interacted.emit(self.key)
 
     def mousePressEvent(self, event):
         if not self.is_enabled: return
@@ -168,7 +167,7 @@ class SettingsTileWidget(QWidget):
             self.value_button.setText("-" if self.is_unchanged else str(self.options[self.tile_value]))
 
         self.update_style()
-        self.state_changed.emit()
+        self.user_interacted.emit(self.key)
 
     def get_state(self):
         return {"tile_value": self.tile_value, "is_unchanged": self.is_unchanged}
@@ -187,7 +186,6 @@ class SettingsTileWidget(QWidget):
             self.text_field.blockSignals(False)
             
         self.update_style()
-        self.state_changed.emit()
 
 class SettingsTile(QListWidgetItem):
     def __init__(self, type_: int, symbol_on: str, symbol_off: str, options: list[str], options_count: int, tooltip: str, key: str, parent_list=None):
@@ -203,5 +201,5 @@ class SettingsTile(QListWidgetItem):
     def update_style(self):
         self.widget.update_style()
     @property
-    def state_changed(self):
-        return self.widget.state_changed
+    def user_interacted(self):
+        return self.widget.user_interacted
