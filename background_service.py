@@ -89,19 +89,69 @@ class SettingsManager:
 
     def set_airplane_mode(self, state):
         if state.get('is_unchanged', True): return
-        # UI "On" (tile_value 0) maps to airplane mode ON (Registry value 0)
-        # UI "Off" (tile_value 1) maps to airplane mode OFF (Registry value 1)
+        
+        # UI "On" (tile_value 0) -> Airplane Mode ON -> PowerShell state 0
+        # UI "Off" (tile_value 1) -> Airplane Mode OFF -> PowerShell state 1
         turn_on = state.get('tile_value') == 0
-        reg_value = 0 if turn_on else 1
+        desired_state = 0 if turn_on else 1
+
+        command = f"""
+        Add-Type -TypeDefinition @'
+        using System;
+        using System.Runtime.InteropServices;
+
+        public static class NativeMethods {{
+            [DllImport("ole32.dll")]
+            public static extern int CoInitialize(IntPtr pv);
+            [DllImport("ole32.dll")]
+            public static extern void CoUninitialize();
+            [DllImport("ole32.dll")]
+            public static extern uint CoCreateInstance(Guid clsid, IntPtr pv, uint ctx, Guid iid, out IntPtr ppv);
+        }}
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        public delegate int GetSystemRadioStateDelegate(IntPtr cg, out int ie, out int se, out int p3);
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        public delegate int SetSystemRadioStateDelegate(IntPtr ptr, int state);
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        public delegate int ReleaseDelegate(IntPtr ptr);
+'@
+
+        $CLSID = '581333F6-28DB-41BE-BC7A-FF201F12F3F6'
+        $IID   = 'DB3AFBFB-08E6-46C6-AA70-BF9A34C30AB7'
+        $mrs   = [System.Runtime.InteropServices.Marshal]
+        $desiredState = {desired_state}
+
+        try {{
+            $irm  = 0
+            $null = [NativeMethods]::CoInitialize(0)
+            $null = [NativeMethods]::CoCreateInstance($CLSID, 0, 4, $IID, [ref]$irm)
+
+            $comPtr  = $mrs::ReadIntPtr($irm)
+            $methodPtr  = [IntPtr[]]::new(8)
+            $mrs::Copy($comPtr, $methodPtr, 0, $methodPtr.Length)
+
+            $getState = $mrs::GetDelegateForFunctionPointer($methodPtr[5], [GetSystemRadioStateDelegate])
+            $setState = $mrs::GetDelegateForFunctionPointer($methodPtr[6], [SetSystemRadioStateDelegate])
+            $release  = $mrs::GetDelegateForFunctionPointer($methodPtr[2], [ReleaseDelegate])
+
+            $currentState, $p2, $p3 = (0,0,0)
+            $null = $getState.Invoke($irm, [ref]$currentState, [ref]$p2, [ref]$p3)
+
+            if ($currentState -ne $desiredState) {{
+                $null = $setState.Invoke($irm, $desiredState)
+            }}
+            
+            $null = $release.Invoke($irm)
+        }}
+        finally {{
+            $null = [NativeMethods]::CoUninitialize()
+        }}
+        """
         try:
-            # This key requires administrator privileges to modify
-            key_path = r'SYSTEM\CurrentControlSet\Control\RadioManagement\SystemRadioState'
-            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key_path, 0, winreg.KEY_SET_VALUE) as key:
-                winreg.SetValueEx(key, '', 0, winreg.REG_DWORD, reg_value)
-        except PermissionError:
-            print("Error: Permission denied. You need to run this script as an administrator to change airplane mode.")
-        except FileNotFoundError:
-            print(f"Error: Airplane mode registry key not found at {key_path}")
+            self._run_powershell(command)
         except Exception as e:
             print(f"Error setting airplane mode: {e}")
 
