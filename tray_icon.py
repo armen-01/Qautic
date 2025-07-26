@@ -37,9 +37,10 @@ class TrayIcon(QSystemTrayIcon):
         self.action_theme_system = QAction("Use System Color", self, checkable=True)
         theme_menu.addAction(self.action_theme_system)
         menu.addMenu(theme_menu)
-        toggle_service = QAction('Disable Service', self)
+        self.toggle_service_action = QAction('Disable Service', self)
+        self.toggle_service_action.triggered.connect(self._toggle_service_status)
         quit_action = QAction('Quit', self)
-        menu.addAction(toggle_service)
+        menu.addAction(self.toggle_service_action)
         menu.addSeparator()
         menu.addAction(quit_action)
         self.setContextMenu(menu)
@@ -53,6 +54,7 @@ class TrayIcon(QSystemTrayIcon):
         self.action_theme_system.toggled.connect(self.set_system_color_pref)
         # Load preferences on startup
         self.load_theme_preferences()
+        self._load_service_status()
 
     def show_widget(self):
         self.floating_widget.slide_in()
@@ -101,3 +103,16 @@ class TrayIcon(QSystemTrayIcon):
         self.action_theme_dark.setChecked(theme == 'dark')
         self.action_theme_auto.setChecked(theme == 'auto')
         self.action_theme_system.setChecked(use_system_color)
+
+    def _load_service_status(self):
+        prefs = load_preferences()
+        is_enabled = prefs.get('service_enabled', True)  # Default to enabled
+        self.toggle_service_action.setText("Disable Service" if is_enabled else "Enable Service")
+
+    def _toggle_service_status(self):
+        prefs = load_preferences()
+        is_enabled = prefs.get('service_enabled', True)
+        new_state = not is_enabled
+        prefs['service_enabled'] = new_state
+        save_preferences(prefs)
+        self.toggle_service_action.setText("Disable Service" if new_state else "Enable Service")
