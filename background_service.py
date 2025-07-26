@@ -38,9 +38,16 @@ class SettingsManager:
 
     def _run_powershell(self, command):
         try:
-            subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        except Exception as e:
+            result = subprocess.run(
+                ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command],
+                check=True, capture_output=True, text=True
+            )
+        except subprocess.CalledProcessError as e:
             print(f"Error executing PowerShell command: {e}")
+            print(f"Stderr: {e.stderr}")
+            print(f"Stdout: {e.stdout}")
+        except Exception as e:
+            print(f"An unexpected error occurred while executing PowerShell command: {e}")
 
     async def _set_radio_state_async(self, kind, turn_on):
         try:
@@ -133,24 +140,15 @@ class SettingsManager:
         if state.get('is_unchanged', True): return
         try:
             turn_on = state.get('tile_value') == 0
-            status = "true" if turn_on else "false"
-            key_path = r"Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current\default$windows.data.bluelightreduction.settings"
+            script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Switch-NightLight.psm1')
             
-            # The JSON payload needs to be precise, including whitespace, and encoded in UTF-16 LE.
-            json_data = f'\n        {{"State":{{"Enabled":{status}}}}}'
+            # The functions in the module are idempotent, so we can call them directly.
+            action = "Enable-NightLight" if turn_on else "Disable-NightLight"
             
-            # Header bytes + JSON data
-            header = bytes.fromhex("020000005288287242cdbf4896b7526c7d22724301000000")
-            value_to_set = header + json_data.encode('utf-16-le')
-
-            try:
-                # Open the key with write access
-                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_WRITE) as key:
-                    winreg.SetValueEx(key, "Data", 0, winreg.REG_BINARY, value_to_set)
-            except FileNotFoundError:
-                # If the key doesn't exist, create it and set the value
-                with winreg.CreateKey(winreg.HKEY_CURRENT_USER, key_path) as key:
-                    winreg.SetValueEx(key, "Data", 0, winreg.REG_BINARY, value_to_set)
+            # Import the module and call the appropriate function.
+            command = f"Import-Module '{script_path}'; {action}"
+            
+            self._run_powershell(command)
         except Exception as e:
             print(f"Error setting night light: {e}")
 
