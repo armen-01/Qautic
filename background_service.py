@@ -355,6 +355,8 @@ class BackgroundService:
             current_stack_pids = {app['pid'] for app in self.running_apps_stack}
             
             for prog in self.monitored_programs:
+                if not prog.get('is_enabled', True):
+                    continue
                 prog_exe_name = os.path.basename(prog['path']).lower()
                 try:
                     for p in psutil.process_iter(['pid', 'name']):

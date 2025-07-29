@@ -3,11 +3,11 @@ from PyQt6.QtGui import QIcon, QAction
 from PyQt6.QtCore import Qt
 
 class ProgramItem(QListWidgetItem):
-    def __init__(self, name: str, path: str, icon: QIcon = None, settings=None, parent_list=None):
+    def __init__(self, name: str, path: str, icon: QIcon = None, settings=None, parent_list=None, is_enabled=True):
         super().__init__(name)
         self.name = name
         self.path = path
-        self.is_enabled = True
+        self.is_enabled = is_enabled
         self._original_icon = icon
         self.setToolTip(name)
         self.settings = settings or {}  # Dict of {setting_key: {tile_value, is_unchanged}}
@@ -28,6 +28,7 @@ class ProgramItem(QListWidgetItem):
     def toggle_enabled(self):
         self.is_enabled = not self.is_enabled
         self._update_icon_appearance()
+        self._save_state_to_json()
 
     def set_enabled(self, enabled: bool):
         self.is_enabled = enabled
@@ -60,6 +61,17 @@ class ProgramItem(QListWidgetItem):
         menu.addSeparator()
         menu.addAction(delete_action)
         menu.exec(event.globalPosition().toPoint())
+
+    def _save_state_to_json(self):
+        # Traverse up: QListWidget -> ListBase -> FloatingWidgetMenuMain
+        list_widget = self.parent_list
+        if list_widget is None: return
+        list_base = list_widget.parentWidget() if hasattr(list_widget, 'parentWidget') else None
+        if not list_base: return
+        main_widget = list_base.parentWidget() if hasattr(list_base, 'parentWidget') else None
+        if not main_widget or not hasattr(main_widget, '_save_programs'): return
+        # Call _save_programs after toggling to sync JSON
+        main_widget._save_programs()
 
     def remove_from_json(self):
         # Traverse up: QListWidget -> ListBase -> FloatingWidgetMenuMain

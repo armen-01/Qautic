@@ -106,7 +106,15 @@ class FloatingWidgetMenuMain(StyledSplitter):
         icon_provider = QFileIconProvider()
         for entry in data:
             icon = icon_provider.icon(QFileInfo(entry['path'])) if os.path.exists(entry['path']) else None
-            prog_item = ProgramItem(name=entry['name'], path=entry['path'], icon=icon, settings=entry.get('settings', {}), parent_list=self.programs_area.list_widget)
+            is_enabled = entry.get('is_enabled', True)
+            prog_item = ProgramItem(
+                name=entry['name'], 
+                path=entry['path'], 
+                icon=icon, 
+                settings=entry.get('settings', {}), 
+                parent_list=self.programs_area.list_widget,
+                is_enabled=is_enabled
+            )
             self.programs_area.add_item(prog_item)
 
     def _save_programs(self):
@@ -115,7 +123,12 @@ class FloatingWidgetMenuMain(StyledSplitter):
         for i in range(lw.count()):
             item = lw.item(i)
             if isinstance(item, ProgramItem) and item.path != "internal::default":
-                programs.append({'name': item.name, 'path': item.path, 'settings': getattr(item, 'settings', {})})
+                programs.append({
+                    'name': item.name, 
+                    'path': item.path, 
+                    'settings': getattr(item, 'settings', {}),
+                    'is_enabled': getattr(item, 'is_enabled', True)
+                })
         save_programs(programs)
 
     def _load_default_settings(self):
