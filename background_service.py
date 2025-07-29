@@ -305,8 +305,8 @@ class BackgroundService:
         self.settings_manager = SettingsManager(self.async_runner)
         self.running_apps_stack = []
         self.service_enabled = False
-        self.default_settings_option = 'fallback'
-        self.fallback_settings = {}
+        self.default_settings_option = 'use'
+        #self.fallback_settings = {}
         self.monitored_programs = []
         self.lock = threading.Lock()
         self.last_applied_profile_name = None
@@ -336,7 +336,7 @@ class BackgroundService:
         with self.lock:
             prefs = load_preferences()
             self.service_enabled = prefs.get('service_enabled', True)
-            self.default_settings_option = prefs.get('default_settings_option', 'fallback')
+            self.default_settings_option = prefs.get('default_settings_option', 'use')
         self.update_settings()
 
     def on_programs_changed(self):
@@ -392,9 +392,9 @@ class BackgroundService:
                     profile_to_apply = prefs.get('default_settings', {})
                     profile_name = "Default (use)"
                     program_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'main.py'))
-                elif self.default_settings_option == 'fallback':
-                    profile_to_apply = self.fallback_settings
-                    profile_name = "Default (fallback)"
+                # elif self.default_settings_option == 'fallback':
+                #     profile_to_apply = self.fallback_settings
+                #     profile_name = "Default (fallback)"
                 else:
                     profile_name = "Default (disabled)"
 
