@@ -159,23 +159,28 @@ class BackgroundService:
 
     def _wmi_event_loop(self):
         """
-        The core event-driven loop. It watches for any process change and
-        triggers a full, reliable rescan.
+        The core event-driven loop. It watches for any process change and triggers a full rescan
         """
         pythoncom.CoInitialize()
+        c = None
+        watcher = None
         try:
             raw_wql = "SELECT * FROM __InstanceOperationEvent WITHIN 2 WHERE TargetInstance ISA 'Win32_Process'"
-            c = wmi.WMI()
-            watcher = c.watch_for(raw_wql=raw_wql)
-            print("WMI event watcher started.")
-
+            
             while not self.stop_event.is_set():
-                # Always check for a manual rescan request first
-                if self.rescan_needed.is_set():
-                    self.rescan_needed.clear()
-                    self._perform_process_scan()
-
                 try:
+                    if watcher is None:
+                        # If the watcher is not initialized or has been reset, create a new one.
+                        print("Initializing WMI event watcher...")
+                        c = wmi.WMI()
+                        watcher = c.watch_for(raw_wql=raw_wql)
+                        print("WMI event watcher started.")
+
+                    # Always check for a manual rescan request first
+                    if self.rescan_needed.is_set():
+                        self.rescan_needed.clear()
+                        self._perform_process_scan()
+
                     # Wait for any process creation or deletion event
                     event = watcher(timeout_ms=1000)
                     if event:
@@ -183,12 +188,28 @@ class BackgroundService:
                         # Trigger a rescan to ensure the state is 100% accurate.
                         print("WMI event detected, triggering a rescan.")
                         self._perform_process_scan()
+
                 except wmi.x_wmi_timed_out:
-                    continue # This is normal, just means no events happened
+                    # This is a normal timeout, just continue the loop.
+                    continue
+                
+                except wmi.x_wmi as e:
+                    # A WMI error occurred, likely the watcher is no longer valid.
+                    # This includes the 'Call cancelled' error.
+                    print(f"[WARNING] WMI query error: {e}. Re-initializing watcher.")
+                    watcher = None # Setting to None will trigger re-initialization.
+                    c = None
+                    time.sleep(5) # Wait before trying to reconnect.
+
                 except Exception as e:
+                    # Catch any other unexpected errors.
                     print(f"[ERROR] An unexpected error occurred in WMI loop: {e}")
-                    time.sleep(2) # Prevent rapid-fire errors
+                    time.sleep(2)
         finally:
+            # Explicitly release COM objects before CoUninitialize.
+            # This helps prevent 'Call cancelled' errors on shutdown.
+            watcher = None
+            c = None
             pythoncom.CoUninitialize()
             print("WMI event watcher stopped.")
 
