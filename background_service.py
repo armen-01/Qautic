@@ -117,99 +117,95 @@ class BackgroundService:
         print(f"Monitored programs list updated. Flagging for rescan.")
         self.rescan_needed.set()
 
-    def _perform_process_scan(self):
+    def _perform_process_scan(self, wmi_connection):
         """
         Scans for running monitored processes using a targeted WQL query.
         This is the single source of truth for the running application stack.
-        MUST be called from the WMI thread.
+        MUST be called from the WMI thread and use the provided WMI connection.
         """
-        print("Performing targeted process scan...")
+        #print("Performing targeted process scan...")
         
         with self.lock:
             monitored_names = list(self.monitored_executables.keys())
-            if not monitored_names:
+            if not monitored_names or wmi_connection is None:
                 self.running_apps_stack = []
             else:
                 # Build a WQL query for efficiency
                 where_clause = " OR ".join([f"Name = '{name}'" for name in monitored_names])
                 query = f"SELECT ProcessId, Name FROM Win32_Process WHERE {where_clause}"
                 
-                c = wmi.WMI()
-                found_processes = c.query(query)
+                try:
+                    found_processes = wmi_connection.query(query)
+                    new_stack = []
+                    for process in found_processes:
+                        try:
+                            p_name = process.Name.lower()
+                            if p_name in self.monitored_executables:
+                                prog_data = self.monitored_executables[p_name]
+                                new_stack.append({
+                                    'name': prog_data['name'],
+                                    'pid': process.ProcessId,
+                                    'settings': prog_data['settings'],
+                                    'path': prog_data['path']
+                                })
+                        except Exception:
+                            continue
+                    
+                    self.running_apps_stack = new_stack
+                    self.sort_stack()
+                except wmi.x_wmi as e:
+                    print(f"[ERROR] WMI query failed during process scan: {e}. The stack may be outdated.")
+                    # Don't clear the stack, just log the error and proceed.
+                    # The main loop will handle re-initializing the connection.
+                    raise # Re-raise to be caught by the main loop's error handler
 
-                new_stack = []
-                for process in found_processes:
-                    try:
-                        p_name = process.Name.lower()
-                        if p_name in self.monitored_executables:
-                            prog_data = self.monitored_executables[p_name]
-                            new_stack.append({
-                                'name': prog_data['name'],
-                                'pid': process.ProcessId,
-                                'settings': prog_data['settings'],
-                                'path': prog_data['path']
-                            })
-                    except Exception:
-                        continue
-                
-                self.running_apps_stack = new_stack
-                self.sort_stack()
-        
         self.update_settings()
 
     def _wmi_event_loop(self):
         """
-        The core event-driven loop. It watches for any process change and triggers a full rescan
+        The core event-driven loop. It watches for any process change and triggers a full rescan.
+        COM initialization is handled here as this function runs in its own thread.
         """
         pythoncom.CoInitialize()
-        c = None
+        wmi_connection = None
         watcher = None
         try:
             raw_wql = "SELECT * FROM __InstanceOperationEvent WITHIN 2 WHERE TargetInstance ISA 'Win32_Process'"
             
             while not self.stop_event.is_set():
                 try:
-                    if watcher is None:
-                        # If the watcher is not initialized or has been reset, create a new one.
-                        print("Initializing WMI event watcher...")
-                        c = wmi.WMI()
-                        watcher = c.watch_for(raw_wql=raw_wql)
-                        print("WMI event watcher started.")
+                    if wmi_connection is None:
+                        print("Initializing WMI connection...")
+                        wmi_connection = wmi.WMI()
+                        watcher = wmi_connection.watch_for(raw_wql=raw_wql)
+                        print("WMI connection and event watcher started.")
+                        self.rescan_needed.set()
 
-                    # Always check for a manual rescan request first
                     if self.rescan_needed.is_set():
                         self.rescan_needed.clear()
-                        self._perform_process_scan()
+                        self._perform_process_scan(wmi_connection)
 
-                    # Wait for any process creation or deletion event
                     event = watcher(timeout_ms=1000)
                     if event:
-                        # An event occurred, so the list of running processes may have changed.
-                        # Trigger a rescan to ensure the state is 100% accurate.
-                        print("WMI event detected, triggering a rescan.")
-                        self._perform_process_scan()
+                        self._perform_process_scan(wmi_connection)
 
                 except wmi.x_wmi_timed_out:
-                    # This is a normal timeout, just continue the loop.
                     continue
                 
-                except wmi.x_wmi as e:
-                    # A WMI error occurred, likely the watcher is no longer valid.
-                    # This includes the 'Call cancelled' error.
-                    print(f"[WARNING] WMI query error: {e}. Re-initializing watcher.")
-                    watcher = None # Setting to None will trigger re-initialization.
-                    c = None
-                    time.sleep(5) # Wait before trying to reconnect.
+                except (wmi.x_wmi, pythoncom.com_error) as e:
+                    print(f"[WARNING] WMI/COM error occurred: {e}. Re-initializing connection.")
+                    watcher = None
+                    wmi_connection = None
+                    time.sleep(5)
 
                 except Exception as e:
-                    # Catch any other unexpected errors.
                     print(f"[ERROR] An unexpected error occurred in WMI loop: {e}")
-                    time.sleep(2)
+                    watcher = None
+                    wmi_connection = None
+                    time.sleep(10)
         finally:
-            # Explicitly release COM objects before CoUninitialize.
-            # This helps prevent 'Call cancelled' errors on shutdown.
             watcher = None
-            c = None
+            wmi_connection = None
             pythoncom.CoUninitialize()
             print("WMI event watcher stopped.")
 
