@@ -182,21 +182,19 @@ class SettingsManager:
         except Exception as e:
             print(f"Error setting night light: {e}")
 
-    def set_notifications(self, state):
+    def set_microphone(self, state):
         if state.get('is_unchanged', True): return
-        # UI "On" (tile_value 0) maps to "Priority Only" (Registry value 1)
-        # UI "Off" (tile_value 1) maps to "Off" (Registry value 0)
-        reg_level = 1 if state.get('tile_value', 1) == 0 else 0
-        key_path = r'Software\Microsoft\Windows\CurrentVersion\FocusAssist'
+        CoInitialize()
         try:
-            with winreg.CreateKey(winreg.HKEY_CURRENT_USER, key_path) as key:
-                winreg.SetValueEx(key, 'Level', 0, winreg.REG_DWORD, reg_level)
-            
-            # Broadcast a specific WM_SETTINGCHANGE message for the registry key
-            # This is often more reliable than a generic "Policy" broadcast.
-            ctypes.windll.user32.SendMessageTimeoutW(0xFFFF, 0x001A, 0, key_path, 2, 1000, None)
+            mic = AudioUtilities.GetMicrophone()
+            interface = mic.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+            volume = cast(interface, POINTER(IAudioEndpointVolume))
+            is_muted = state.get('tile_value') == 1
+            volume.SetMute(is_muted, None)
         except Exception as e:
-            print(f"Error setting notifications: {e}")
+            print(f"Error setting microphone mute: {e}")
+        finally:
+            CoUninitialize()
 
     def set_startup(self, state, program_path, program_name):
         if state.get('is_unchanged', True) or not program_path: return
@@ -264,5 +262,5 @@ class SettingsManager:
         self.set_performance_mode(settings_profile.get('performance', {'is_unchanged': True}))
         self.set_system_color(settings_profile.get('systemcolor', {'is_unchanged': True}))
         self.set_night_light(settings_profile.get('nightlight', {'is_unchanged': True}))
-        self.set_notifications(settings_profile.get('notifications', {'is_unchanged': True}))
+        self.set_microphone(settings_profile.get('microphone', {'is_unchanged': True}))
         self.set_startup(settings_profile.get('startup', {'is_unchanged': True}), program_path, profile_name)

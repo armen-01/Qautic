@@ -55,7 +55,7 @@ class FloatingWidgetMenuMain(StyledSplitter):
             ("performance", 0, "\uE322", "\uE4FF",  ["High", "Medium", "Low"], 3, "Performance Mode"),
             ("nightlight", 0, "\uF34F", "\uEB76", ["On", "Off"], 2, "Night Light"),
             ("airplane", 0, "\uE195", "\uE194", ["On", "Off"], 2, "Airplane Mode"),
-            ("notifications", 0, "\uE7F7", "\uE7F6", ["On", "Off"], 2, "Notifications"),
+            ("microphone", 0, "\uE029", "\uE02b", ["On", "Off"], 2, "Microphone"),
             ("hotspot", 0, "\uE1E2", "\uE0CE", ["On", "Off"], 2, "Hotspot"),
             ("systemcolor", 0, "\uEB37", "\uEC72", ["Light", "Dark"], 2, "System Color"),
             ("startup", 0, "\uEB9B", "\uEBA5", ["On", "Off"], 2, "Launch at System Startup"),
