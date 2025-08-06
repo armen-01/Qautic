@@ -1,22 +1,26 @@
 from PyQt6.QtWidgets import QApplication
 import sys
 import multiprocessing
-import subprocess
 import atexit
 from floating_widget import FloatingWidget
 from tray_icon import TrayIcon
+import background_service
 
 background_process = None
 
+def run_background_service_process():
+    service = background_service.BackgroundService()
+    service.run()
+
 def run_background_service():
-    # Use subprocess to run the script in a new process
     global background_process
-    background_process = subprocess.Popen([sys.executable, "background_service.py"])
+    background_process = multiprocessing.Process(target=run_background_service_process)
+    background_process.start()
 
 def cleanup_background_process():
-    if background_process:
+    if background_process and background_process.is_alive():
         background_process.terminate()
-        background_process.wait()
+        background_process.join()
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()  # For PyInstaller

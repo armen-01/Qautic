@@ -164,7 +164,12 @@ class SettingsManager:
     def set_system_color(self, state):
         if state.get('is_unchanged', True): return
         new_value = 1 - state.get('tile_value', 0)
-        self._run_powershell(f"Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' -Name AppsUseLightTheme -Value {new_value}")
+        command = f"""
+        $path = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize'
+        Set-ItemProperty -Path $path -Name AppsUseLightTheme -Value {new_value}
+        Set-ItemProperty -Path $path -Name SystemUsesLightTheme -Value {new_value}
+        """
+        self._run_powershell(command)
 
     def set_night_light(self, state):
         if state.get('is_unchanged', True): return
@@ -209,14 +214,27 @@ class SettingsManager:
                 if not os.path.exists(shortcut_path):
                     shell = win32com.client.Dispatch("WScript.Shell")
                     shortcut = shell.CreateShortCut(shortcut_path)
-                    if program_path.endswith('.py'):
+
+                    # Check if the application is creating a shortcut for itself
+                    is_self_shortcut = 'main.py' in program_path
+
+                    if is_self_shortcut and getattr(sys, 'frozen', False):
+                        # Case 1: App is an EXE, creating its own shortcut
+                        shortcut.TargetPath = sys.executable
+                        shortcut.Arguments = ""
+                        shortcut.WorkingDirectory = os.path.dirname(sys.executable)
+                    elif program_path.endswith('.py'):
+                        # Case 2: Target is a Python script (could be the app itself, or another script)
                         python_exe_path = sys.executable
                         pythonw_exe_path = python_exe_path.replace("python.exe", "pythonw.exe")
                         shortcut.TargetPath = pythonw_exe_path
                         shortcut.Arguments = f'"{os.path.abspath(program_path)}"'
+                        shortcut.WorkingDirectory = os.path.dirname(os.path.abspath(program_path))
                     else:
+                        # Case 3: Target is a standard executable
                         shortcut.TargetPath = program_path
-                    shortcut.WorkingDirectory = os.path.dirname(os.path.abspath(program_path))
+                        shortcut.WorkingDirectory = os.path.dirname(os.path.abspath(program_path))
+                    
                     shortcut.save()
             else:
                 if os.path.exists(shortcut_path):
