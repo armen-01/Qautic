@@ -4,10 +4,11 @@ import threading
 import asyncio
 import wmi
 import pythoncom
+from queue import Empty
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from json_handler import load_preferences, load_programs, get_preferences_path, get_programs_path
+from json_handler import load_preferences, load_programs, get_preferences_path, get_programs_path, get_asset_path
 from settings_tile_functions import SettingsManager
 
 class AsyncRunner:
@@ -42,9 +43,10 @@ class BackgroundService:
     Monitors running processes and applies system settings based on user-defined profiles.
     This service is event-driven, using WMI for efficient, real-time process monitoring.
     """
-    def __init__(self):
+    def __init__(self, stop_queue=None):
         self.async_runner = AsyncRunner()
         self.settings_manager = SettingsManager(self.async_runner)
+        self.stop_queue = stop_queue
         
         # --- State Management ---
         self.running_apps_stack = []
@@ -59,29 +61,48 @@ class BackgroundService:
         self.wmi_thread = None
         self.stop_event = threading.Event()
         self.rescan_needed = threading.Event()
+        self.observer = None
 
     def run(self):
-        """Starts the background service and all its components."""
+        """Starts the background service and waits for a stop command."""
         self._load_initial_state()
         self._setup_watchers()
         
         self.wmi_thread = threading.Thread(target=self._wmi_event_loop, daemon=True)
         self.wmi_thread.start()
 
-        print("Background service is running. Press Ctrl+C to stop.")
-        try:
-            while not self.stop_event.is_set():
-                time.sleep(1)
-        except KeyboardInterrupt:
-            self.stop()
+        print("Background service is running. Waiting for stop signal.")
+        
+        # This loop waits for the 'stop' command from the main process
+        while True:
+            try:
+                # Blocking wait for a command.
+                command = self.stop_queue.get() 
+                if command == 'stop':
+                    print("Stop signal received, shutting down service.")
+                    self.stop()
+                    break # Exit the loop and the process
+            except (KeyboardInterrupt, SystemExit):
+                self.stop()
+                break
+            except Exception:
+                self.stop()
+                break
 
     def stop(self):
         """Stops the service and cleans up resources."""
         print("Stopping background service...")
         self.stop_event.set()
+        if self.observer:
+            self.observer.stop()
+            self.observer.join()
         if self.wmi_thread:
             self.wmi_thread.join()
-        self.async_runner.loop.call_soon_threadsafe(self.async_runner.loop.stop)
+        # Stop the asyncio loop from its own thread
+        if self.async_runner.loop.is_running():
+            self.async_runner.loop.call_soon_threadsafe(self.async_runner.loop.stop)
+        if self.async_runner.thread.is_alive():
+            self.async_runner.thread.join()
         print("Service stopped.")
 
     def _load_initial_state(self):
@@ -93,9 +114,10 @@ class BackgroundService:
     def _setup_watchers(self):
         """Sets up watchdog to monitor JSON configuration files for changes."""
         event_handler = JsonFileHandler(self)
-        observer = Observer()
-        observer.schedule(event_handler, path=os.path.dirname(get_preferences_path()), recursive=False)
-        observer.start()
+        self.observer = Observer()
+        # Watch the directory where the writable data files are
+        self.observer.schedule(event_handler, path=os.path.dirname(get_preferences_path()), recursive=False)
+        self.observer.start()
 
     def on_preferences_changed(self):
         """Handles changes to 'preferences.json'."""
@@ -243,7 +265,7 @@ class BackgroundService:
                     prefs = load_preferences()
                     target_profile_name = "Default"
                     target_profile_settings = prefs.get('default_settings', {})
-                    target_profile_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'main.py'))
+                    target_profile_path = os.path.abspath(os.path.join(get_asset_path(), 'main.py'))
                 else:
                     target_profile_name = "Idle"
 
