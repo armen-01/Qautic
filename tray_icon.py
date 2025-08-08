@@ -1,7 +1,8 @@
 from PyQt6.QtWidgets import QSystemTrayIcon, QMenu, QApplication, QStyle
 from PyQt6.QtGui import QIcon, QAction, QActionGroup
 from ui_colors import load_theme_preferences_and_update_colors, update_all_widgets
-from json_handler import load_preferences, save_preferences
+from json_handler import load_preferences, save_preferences, get_asset_path
+import os
 
 class TrayIcon(QSystemTrayIcon):
     def __init__(self, floating_widget, parent=None):
@@ -9,13 +10,19 @@ class TrayIcon(QSystemTrayIcon):
         self.floating_widget = floating_widget
         self.slider_value = 74
 
-        # Set a default icon
-        app = QApplication.instance()
-        if app is not None:
-            default_icon = app.style().standardIcon(QStyle.StandardPixmap.SP_ComputerIcon)
-            self.setIcon(default_icon)
+        # Set custom icon
+        icon_path = os.path.join(get_asset_path(), 'assets', 'graphics', 'ico.png')
+        if os.path.exists(icon_path):
+            self.setIcon(QIcon(icon_path))
         else:
-            self.setIcon(QIcon())
+            # Fallback to a default system icon if the custom one isn't found
+            app = QApplication.instance()
+            if app is not None:
+                default_icon = app.style().standardIcon(QStyle.StandardPixmap.SP_ComputerIcon)
+                self.setIcon(default_icon)
+            else:
+                self.setIcon(QIcon())
+        
         self.setToolTip('Show/Hide Floating Widget')
 
         # Create context menu

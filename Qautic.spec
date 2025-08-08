@@ -121,6 +121,7 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
+    icon='assets\graphics\ico.png',
     console=False, # Set to True if you want a console window
     disable_windowed_traceback=False,
     argv_emulation=False,

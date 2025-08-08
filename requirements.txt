@@ -8,3 +8,4 @@ comtypes
 pywin32
 WMI
 winaccent
+pillow
