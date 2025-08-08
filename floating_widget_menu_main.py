@@ -17,7 +17,8 @@ class FloatingWidgetMenuMain(StyledSplitter):
         self.setSizes([(parent.WIDGET_HEIGHT-parent.splitter_height-parent.notch_height)//2, (parent.WIDGET_HEIGHT-parent.splitter_height-parent.notch_height)//2])
         self.setContentsMargins(int(parent.splitter_height*1.5), int(parent.splitter_height*1.5), 0, int(parent.splitter_height*1.5))
         
-        self.programs_area = ListBase(self, label="Programs", sz=74)
+        # Programs area with drag and drop enabled
+        self.programs_area = ListBase(self, label="Programs", sz=74, accept_drops=True, drop_callback=self._add_program_from_path)
         
         self.settings_tiles = {}
         self.settings_area = ListBase(self, parent.main_radius - (parent.splitter_height*2.4), label="Auto Settings", sz=92)
@@ -74,32 +75,39 @@ class FloatingWidgetMenuMain(StyledSplitter):
         plus_item = QListWidgetItem()
         plus_button = QPushButton("+")
         plus_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        plus_button.clicked.connect(self._on_add_program)
+        plus_button.clicked.connect(self._on_add_program_clicked)
         lw = self.programs_area.list_widget
         lw.addItem(plus_item)
         lw.setItemWidget(plus_item, plus_button)
         return plus_item, plus_button
 
-    def _on_add_program(self):
+    def _on_add_program_clicked(self):
         file_dialog = QFileDialog(self)
         file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
         file_dialog.setNameFilter("Executables (*.exe)")
         if file_dialog.exec():
-            exe_path = file_dialog.selectedFiles()[0]
-            exe_name = os.path.splitext(os.path.basename(exe_path))[0]
-            lw = self.programs_area.list_widget
-            for i in range(lw.count()):
-                item = lw.item(i)
-                if hasattr(item, 'path') and item.path != "internal::default" and os.path.normcase(os.path.abspath(item.path)) == os.path.normcase(os.path.abspath(exe_path)):
-                    QMessageBox.warning(self, "Duplicate Program", f"This program is already in the list.")
-                    return
-            icon_provider = QFileIconProvider()
-            icon = icon_provider.icon(QFileInfo(exe_path))
-            default_settings = {k: {"tile_value": 0, "is_unchanged": True} for k in self.settings_tiles.keys()}
-            prog_item = ProgramItem(name=exe_name, path=exe_path, icon=icon, settings=default_settings, parent_list=lw)
-            lw.insertItem(lw.count() - 2, prog_item) # Insert before add button and default item
-            lw.setCurrentItem(prog_item)
-            self._save_programs()
+            for exe_path in file_dialog.selectedFiles():
+                self._add_program_from_path(exe_path)
+
+    def _add_program_from_path(self, exe_path):
+        exe_name = os.path.splitext(os.path.basename(exe_path))[0]
+        lw = self.programs_area.list_widget
+        # Check for duplicates
+        for i in range(lw.count()):
+            item = lw.item(i)
+            if hasattr(item, 'path') and item.path != "internal::default" and os.path.normcase(os.path.abspath(item.path)) == os.path.normcase(os.path.abspath(exe_path)):
+                QMessageBox.warning(self, "Duplicate Program", f"'{exe_name}' is already in the list.")
+                return
+        
+        icon_provider = QFileIconProvider()
+        icon = icon_provider.icon(QFileInfo(exe_path))
+        default_settings = {k: {"tile_value": 0, "is_unchanged": True} for k in self.settings_tiles.keys()}
+        prog_item = ProgramItem(name=exe_name, path=exe_path, icon=icon, settings=default_settings, parent_list=lw)
+        
+        # Insert before the add button and default item
+        lw.insertItem(lw.count() - 2, prog_item) 
+        lw.setCurrentItem(prog_item)
+        self._save_programs()
 
     def _load_programs(self):
         data = load_programs()

@@ -26,13 +26,15 @@ class SnapListWidget(QListWidget):
 
 class ListBase(QWidget):
     _instances = []
-    def __init__(self, parent=None, bottom_radius:int = 10, label:str = "Label", sz:int = 74):
+    def __init__(self, parent=None, bottom_radius:int = 10, label:str = "Label", sz:int = 74, accept_drops:bool = False, drop_callback=None):
         super().__init__(parent)
         self.sz = sz
         self.label = label
         self.bottom_radius = bottom_radius
-        ListBase.sz = sz
+        self.drop_callback = drop_callback
         ListBase._instances.append(self)
+        
+        self.setAcceptDrops(accept_drops)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -103,6 +105,27 @@ class ListBase(QWidget):
 
         self.setLayout(layout)
         self.update_style()
+
+    def dragEnterEvent(self, event):
+        if self.drop_callback and event.mimeData().hasUrls():
+            event.acceptProposedAction()
+        else:
+            super().dragEnterEvent(event)
+
+    def dragMoveEvent(self, event):
+        if self.drop_callback and event.mimeData().hasUrls():
+            event.acceptProposedAction()
+        else:
+            super().dragMoveEvent(event)
+
+    def dropEvent(self, event):
+        if self.drop_callback and event.mimeData().hasUrls():
+            event.setDropAction(Qt.DropAction.CopyAction)
+            event.acceptProposedAction()
+            for url in event.mimeData().urls():
+                self.drop_callback(url.toLocalFile())
+        else:
+            super().dropEvent(event)
 
     def update_style(self):
         self.header_label.setStyleSheet(f"""

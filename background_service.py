@@ -60,6 +60,7 @@ class BackgroundService:
         self.lock = threading.Lock()
         self.wmi_thread = None
         self.stop_event = threading.Event()
+        self.service_paused = threading.Event()
         self.rescan_needed = threading.Event()
         self.observer = None
 
@@ -125,6 +126,15 @@ class BackgroundService:
             prefs = load_preferences()
             self.service_enabled = prefs.get('service_enabled', True)
             self.default_settings_option = prefs.get('default_settings_option', 'use')
+            
+            if self.service_enabled:
+                self.service_paused.clear()
+            else:
+                self.service_paused.set()
+            
+            # Force re-application of settings
+            self.last_applied_profile_name = None
+
         print(f"Preferences updated: Service Enabled={self.service_enabled}, Default Option='{self.default_settings_option}'")
         self.update_settings()
 
@@ -136,6 +146,8 @@ class BackgroundService:
                 os.path.basename(prog['path']).lower(): prog 
                 for prog in self.monitored_programs if prog.get('is_enabled', True)
             }
+            # Force re-application of settings
+            self.last_applied_profile_name = None
         print(f"Monitored programs list updated. Flagging for rescan.")
         self.rescan_needed.set()
 
@@ -195,6 +207,13 @@ class BackgroundService:
             raw_wql = "SELECT * FROM __InstanceOperationEvent WITHIN 2 WHERE TargetInstance ISA 'Win32_Process'"
             
             while not self.stop_event.is_set():
+                # Pause the loop if the service is disabled
+                if self.service_paused.is_set():
+                    self.service_paused.wait()
+                    # After resuming, a rescan is needed to catch up on any changes
+                    self.rescan_needed.set()
+                    continue
+
                 try:
                     if wmi_connection is None:
                         print("Initializing WMI connection...")

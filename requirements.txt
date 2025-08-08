@@ -1,0 +1,10 @@
+PyQt6
+psutil
+watchdog
+screen-brightness-control
+pycaw
+winsdk
+comtypes
+pywin32
+WMI
+winaccent

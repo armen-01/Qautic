@@ -128,9 +128,21 @@ class SettingsTileWidget(QWidget):
             ''')
 
     def _on_text_field_changed(self, value):
-        self.tile_value = int(value) if value else 0
+        current_value = int(value) if value else 0
+        
+        # Clamp the value between [0, 1024]
+        clamped_value = max(0, min(current_value, 1024))
+        
+        if current_value != clamped_value:
+            self.text_field.blockSignals(True)
+            self.text_field.setText(str(clamped_value))
+            self.text_field.blockSignals(False)
+        
+        self.tile_value = clamped_value
+        
         if self.is_unchanged:
             self.is_unchanged = False
+        
         self.update_style()
         self.user_interacted.emit(self.key)
 
@@ -159,7 +171,11 @@ class SettingsTileWidget(QWidget):
         elif event.button() == Qt.MouseButton.LeftButton:
             if self.is_unchanged:
                 self.is_unchanged = False
-                self.tile_value = 0
+                # When reactivating, update the visual state to match the stored value
+                if self.type_ == 1:
+                    self.slider.setValue(self.tile_value)
+                elif self.type_ == 2:
+                    self.text_field.setText(str(self.tile_value))
             elif self.type_ == 0:
                  self.tile_value = (self.tile_value + 1) % self.options_count
         
