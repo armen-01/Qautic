@@ -281,4 +281,5 @@ class SettingsManager:
         self.set_system_color(settings_profile.get('systemcolor', {'is_unchanged': True}))
         self.set_night_light(settings_profile.get('nightlight', {'is_unchanged': True}))
         self.set_microphone(settings_profile.get('microphone', {'is_unchanged': True}))
-        self.set_startup(settings_profile.get('startup', {'is_unchanged': True}), program_path, profile_name)
+        # The startup setting is handled separately in the UI, so we ignore it here.
+        # self.set_startup(settings_profile.get('startup', {'is_unchanged': True}), program_path, profile_name)

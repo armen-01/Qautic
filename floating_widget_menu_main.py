@@ -2,12 +2,14 @@ from ui_sub_widgets.splitter import StyledSplitter
 from ui_sub_widgets.list_base import ListBase
 from ui_sub_widgets.settings_tile import SettingsTile
 import os
+import sys
 from PyQt6.QtCore import Qt, QFileInfo
 from PyQt6.QtWidgets import QListWidgetItem, QPushButton, QSizePolicy, QFileDialog, QFileIconProvider, QMessageBox
 from ui_sub_widgets.program_item import ProgramItem
 import ui_colors
 from floating_widget_default_item import default_settings_item
 from json_handler import load_preferences, save_preferences, load_programs, save_programs
+from settings_tile_functions import SettingsManager
 
 class FloatingWidgetMenuMain(StyledSplitter):
     def __init__(self, parent=None):
@@ -182,9 +184,32 @@ class FloatingWidgetMenuMain(StyledSplitter):
     def _on_save_settings(self):
         if not self.selected_program: return
         
+        settings_manager = SettingsManager(None)
+
+        # First, update the settings object for the selected program from the UI tiles
         for key, tile in self.settings_tiles.items():
             self.selected_program.settings[key] = tile.get_state()
         
+        # --- Special, immediate handling for the startup tile for ANY program ---
+        startup_state = self.selected_program.settings.get('startup', {'is_unchanged': True})
+        
+        program_path = None
+        program_name = None
+
+        if self.selected_program == self.default_item:
+            # Handle startup for the main application itself
+            program_path = sys.executable if getattr(sys, 'frozen', False) else __file__
+            program_name = "Qautic"
+        elif hasattr(self.selected_program, 'path'):
+            # Handle startup for a user-added program
+            program_path = self.selected_program.path
+            program_name = self.selected_program.name
+
+        if program_path and program_name:
+            # This function will create/remove the shortcut immediately
+            settings_manager.set_startup(startup_state, program_path, program_name)
+
+        # --- Now, save the updated settings to the correct JSON file ---
         if self.selected_program == self.default_item:
             self._save_default_settings()
         else:
