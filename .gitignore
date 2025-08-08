@@ -3,3 +3,9 @@ ui_sub_widgets/__pycache__/
 programs.json
 preferences.json
 todo.txt
+build/
+dist/
+.venv-clean/
+upx.exe
+upx.1
+upx-doc.txt

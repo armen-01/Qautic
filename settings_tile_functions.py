@@ -18,9 +18,15 @@ class SettingsManager:
 
     def _run_powershell(self, command):
         try:
+            # For Windows, use CREATE_NO_WINDOW to prevent console pop-up
+            creation_flags = 0
+            if sys.platform == "win32":
+                creation_flags = subprocess.CREATE_NO_WINDOW
+
             result = subprocess.run(
                 ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command],
-                check=True, capture_output=True, text=True
+                check=True, capture_output=True, text=True,
+                creationflags=creation_flags
             )
         except subprocess.CalledProcessError as e:
             print(f"Error executing PowerShell command: {e}")

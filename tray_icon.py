@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QSystemTrayIcon, QMenu, QApplication, QStyle
+from PyQt6.QtWidgets import QSystemTrayIcon, QMenu, QApplication, QStyle, QColorDialog
 from PyQt6.QtGui import QIcon, QAction, QActionGroup
 from ui_colors import load_theme_preferences_and_update_colors, update_all_widgets
 from json_handler import load_preferences, save_preferences, get_asset_path
@@ -41,8 +41,20 @@ class TrayIcon(QSystemTrayIcon):
         theme_menu.addAction(self.action_theme_dark)
         theme_menu.addAction(self.action_theme_auto)
         theme_menu.addSeparator()
-        self.action_theme_system = QAction("Use System Color", self, checkable=True)
-        theme_menu.addAction(self.action_theme_system)
+
+        # Color source submenu
+        color_group = QActionGroup(self)
+        color_group.setExclusive(True)
+        self.action_color_system = QAction("System Color", self, checkable=True)
+        self.action_color_custom = QAction("Custom Color", self, checkable=True)
+        self.action_color_none = QAction("No Color", self, checkable=True)
+        color_group.addAction(self.action_color_system)
+        color_group.addAction(self.action_color_custom)
+        color_group.addAction(self.action_color_none)
+        theme_menu.addAction(self.action_color_system)
+        theme_menu.addAction(self.action_color_custom)
+        theme_menu.addAction(self.action_color_none)
+
         menu.addMenu(theme_menu)
         self.toggle_service_action = QAction('Disable Service', self)
         self.toggle_service_action.triggered.connect(self._toggle_service_status)
@@ -58,7 +70,12 @@ class TrayIcon(QSystemTrayIcon):
         self.action_theme_light.triggered.connect(lambda: self.set_theme_pref('light'))
         self.action_theme_dark.triggered.connect(lambda: self.set_theme_pref('dark'))
         self.action_theme_auto.triggered.connect(lambda: self.set_theme_pref('auto'))
-        self.action_theme_system.toggled.connect(self.set_system_color_pref)
+        
+        # Connect color source actions
+        self.action_color_system.triggered.connect(lambda: self.set_color_source_pref('system'))
+        self.action_color_custom.triggered.connect(self.set_custom_color)
+        self.action_color_none.triggered.connect(lambda: self.set_color_source_pref('none'))
+
         # Load preferences on startup
         self.load_theme_preferences()
         self._load_service_status()
@@ -95,21 +112,43 @@ class TrayIcon(QSystemTrayIcon):
         self.action_theme_auto.setChecked(theme == 'auto')
         self._update_theme()
 
-    def set_system_color_pref(self, checked):
+    def set_color_source_pref(self, source):
         prefs = load_preferences()
-        prefs['use_system_color'] = checked
+        prefs['color_source'] = source
         save_preferences(prefs)
-        self.action_theme_system.setChecked(checked)
+        self.action_color_system.setChecked(source == 'system')
+        self.action_color_custom.setChecked(source == 'custom')
+        self.action_color_none.setChecked(source == 'none')
         self._update_theme()
+
+    def set_custom_color(self):
+        prefs = load_preferences()
+        from PyQt6.QtGui import QColor
+        
+        # Use the single custom_color for initial selection
+        initial_color_hex = prefs.get('custom_color', '#777777')
+        initial_color = QColor(initial_color_hex)
+        
+        # Use self.floating_widget as parent for QColorDialog
+        color = QColorDialog.getColor(initial_color, self.floating_widget, "Select Custom Color")
+        
+        if color.isValid():
+            prefs['custom_color'] = color.name()
+            save_preferences(prefs)
+            self.set_color_source_pref('custom')
 
     def load_theme_preferences(self):
         prefs = load_preferences()
         theme = prefs.get('theme', 'auto')
-        use_system_color = prefs.get('use_system_color', False)
+        color_source = prefs.get('color_source', 'none')
+        
         self.action_theme_light.setChecked(theme == 'light')
         self.action_theme_dark.setChecked(theme == 'dark')
         self.action_theme_auto.setChecked(theme == 'auto')
-        self.action_theme_system.setChecked(use_system_color)
+        
+        self.action_color_system.setChecked(color_source == 'system')
+        self.action_color_custom.setChecked(color_source == 'custom')
+        self.action_color_none.setChecked(color_source == 'none')
 
     def _load_service_status(self):
         prefs = load_preferences()
@@ -123,3 +162,4 @@ class TrayIcon(QSystemTrayIcon):
         prefs['service_enabled'] = new_state
         save_preferences(prefs)
         self.toggle_service_action.setText("Disable Service" if new_state else "Enable Service")
+

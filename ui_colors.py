@@ -48,18 +48,28 @@ def load_theme_preferences_and_update_colors():
     # Load preferences
     prefs = load_preferences()
     theme = prefs.get('theme', 'dark')
-    use_system_color = prefs.get('use_system_color', False)
+    color_source = prefs.get('color_source', 'none') # 'system', 'custom', 'none'
+    
     # Determine BASE_BG
-    if use_system_color:
+    if color_source == 'system':
         if theme == 'light' or winaccent.system_uses_light_theme is True:
             BASE_BG = winaccent.accent_light_2
         else:
             BASE_BG = winaccent.accent_dark_2
-    else:
+    elif color_source == 'custom':
+        custom_base_color = prefs.get('custom_color', '#aaa')
+        if theme == 'light' or (theme == 'auto' and winaccent.system_uses_light_theme is True):
+            # Adjust for light theme: make it lighter
+            BASE_BG = adjust_color(custom_base_color, 50) # Increased delta for more noticeable lightness
+        else:
+            # Adjust for dark theme: make it darker
+            BASE_BG = adjust_color(custom_base_color, -50) # Increased delta for more noticeable darkness
+    else: # 'none'
         if theme == 'light' or winaccent.system_uses_light_theme is True:
-            BASE_BG = "#777777"
+            BASE_BG = "#aaa"
         else:
             BASE_BG = "#2C2C2C"
+
     # Recalculate all derived colors
     BASE_BACK_DARK = adjust_color(BASE_BG, -16 if get_luminance(BASE_BG) < 0.5 else 16)
     MAIN_BG = adjust_color(BASE_BG, 16 if get_luminance(BASE_BG) < 0.5 else -16)
